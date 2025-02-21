@@ -1,7 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.dual_screen_example">
+    package="com.example.split_screen_example">
    <application
-        android:label="dual_screen_example"
+        android:label="split_screen_example"
         android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"
