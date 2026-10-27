@@ -1,3 +1,27 @@
+## 2.0.0-dev.1
+
+* **Breaking:** Requires Dart >=3.10.0 <4.0.0 and Flutter >=3.38.0. iOS deployment
+  target is 15.0; compiling the plugin requires Xcode 27.1 and the Duo SDK.
+  Duo behavior is gated on iOS 27.1. CocoaPods supports Flutter 3.38+; SwiftPM
+  uses the Flutter 3.44+ packaging baseline.
+* **Breaking:** Operational sensor errors are now observable instead of being
+  swallowed. Observation is lazy, shared, replaying, and ends on last cancel;
+  readings are cleared before reconnecting. Missing plugins remain empty/false.
+* Add native iOS angle observation and active division-region folds, the nullable
+  `SplitScreen` MediaQuery wrapper, and the hinge-only-compatible `.fold` getter.
+* Preserve child and Router state when initial or resized geometry arrives.
+  Refresh native layout through callbacks instead of continuous frame polling;
+  retry only while waiting for attachment and skip angle-only region queries.
+* Preserve Android, public `DualScreenInfo` call sites and channel names,
+  numeric angle ranges, and `TwoPane` override rules. Correct documentation for
+  existing zero-area fold behavior.
+* Update the example for scene lifecycle, resizing, and independent live angles.
+* Add isolated Dart transport/widget tests and wired native XCTest fixtures for
+  providers, geometry, transport, lifecycle, and bounded capability initialization.
+* Windows validation does not verify Swift builds or native runtime support.
+  Follow `doc/ios-validation.md` before claiming either. No release tag or
+  publishing is part of this change; the tag-triggered workflow is unchanged.
+
 ## 1.0.5
 * Forked from Microsoft's dual_screen project
 * Updated to latest Android, AGP, and Kotlin versions to support newer versions of Flutter

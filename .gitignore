@@ -48,3 +48,7 @@ GeneratedPluginRegistrant.swift
 .project
 .classpath
 .settings
+.build/
+.swiftpm/
+
+!example/ios/Podfile

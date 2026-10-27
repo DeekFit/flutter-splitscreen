@@ -1,111 +1,180 @@
 # Flutter Split Screen
 
-**note**
-This project has been forked from the Microsoft DualScreen project in order to keep it up to date with the latest Flutter / Android requirements. The information below is otherwise unchanged, unless necessary.
+`split_screen` provides `TwoPane`, hinge angle readings, and an optional iOS
+`SplitScreen` wrapper. Forked from Microsoft's `dual_screen` package. The existing
+Android implementation and Microsoft-prefixed channel names remain unchanged.
 
-This contains Microsoft's offerings to streamline foldable and dual-screen development using Flutter. This plugin will work on any platform, but only Android actually has foldable and dual screen devices.
+This `duo` branch is a **2.0.0-dev.1 development build**. Dart behavior is tested on
+Windows. Native Swift compilation, packaging, and device/runtime behavior remain
+unverified until the [Mac validation checklist](doc/ios-validation.md) passes.
+Nothing has been tagged or published.
 
-Flutter already has support for foldable and dual-screen devices in the form of [MediaQuery Display Features](https://docs.microsoft.com/en-us/dual-screen/flutter/mediaquery). In addition to that, this plugin offers:
+## Toolchains
 
-- The [TwoPane widget](#twopane-widget), which relies on display features coming from MediaQuery.
-- Access to the [hinge angle sensor data](#hinge-angle-sensor), which for performance concerns, was not included in MediaQuery.
+| Component | Minimum / supported validation combination |
+| --- | --- |
+| Dart | >=3.10.0 <4.0.0 |
+| Flutter with CocoaPods | 3.38+; validate the 3.38 baseline on Mac |
+| Flutter with SwiftPM | 3.44+ (current Flutter plugin packaging guide) |
+| iOS deployment target | 15.0 |
+| Native compilation | Xcode 27.1 with the Duo SDK |
+| Duo APIs at runtime | iOS 27.1+, guarded with availability checks |
 
-# TwoPane Widget
+Ordinary iPhones and older supported iOS runtimes return no Duo readings or
+plugin folds. Android continues to use its existing sensor and engine display
+features. Other platforms, including web, can use `TwoPane` with their ambient
+`MediaQuery`; the iOS wrapper passes them through unchanged.
 
-This layout has two child panes, which can be shown side-by-side, above-and-below, or a single pane can be prioritized. The relative size of the two pane widgets can be adjusted proportionally; and on dual-screen devices the boundary snaps to the hinge area.
+## Install and wrap the app
 
-## TwoPane API
-
-```dart
-class TwoPane {
-  const TwoPane({
-    Widget startPane,
-    Widget endPane,
-    double paneProportion,
-    TwoPanePriority panePriority,
-    Axis direction,
-    TextDirection? textDirection,
-    VerticalDirection verticalDirection,
-    EdgeInsets padding,
-    Set<TwoPaneAllowedOverrides> allowedOverrides,
-  });
-}
-```
-
-Properties of TwoPane:
-
-- `startPane` - Start pane, which can sit on the left for left-to-right layouts, or at the top for top-to-bottom layouts. If `panePriority` is `start` and there is no hinge, this is the only visible pane.
-- `endPane` - End pane, which can sit on the right for left-to-right layouts, or at the bottom for top-to-bottom layouts. If `panePriority` is `end`, and there is no hinge, this is the only visible pane.
-- `paneProportion` - Proportion of the screen occupied by the start pane. The end pane takes over the rest of the space. A value of 0.5 will make the two panes equal. This property is ignored for displays with a hinge, in which case each pane takes over one screen.
-- `panePriority` - Whether to show only one the start pane, end pane, or both. This property is ignored for displays with a hinge, in which case `both` panes are visible.
-- `direction` - Whether to stack the two panes verticaly or horizontaly, similar to [Flex direction](https://api.flutter.dev/flutter/widgets/Flex/direction.html). This property is ignored for displays with a hinge, in which case the direction is `horizontal` for vertical hinges and `vertical` for horizontal hinges.
-- `textDirection` - When panes are laid out horizontally, this determines which one goes on the left. Behaves the same as [Flex textDirection](https://api.flutter.dev/flutter/widgets/Flex/textDirection.html)
-- `verticalDirection` - When panes are laid out vertically, this determines which one goes at the top. Behaves the same as [Flex verticalDirection](https://api.flutter.dev/flutter/widgets/Flex/verticalDirection.html)
-- `padding` - The padding between TwoPane and the edges of the screen. If there is spacing between TwoPane and the root MediaQuery, `padding` is used to correctly align the two panes to the hinge.
-- `allowedOverrides` - The parameters that TwoPane is allowed to override when a separating display feature is found. By default, it contains `paneProportion`, `direction` and `panePriority`, allowing all possible overrides.
-
-> Most of the parameters provided to TwoPane are ignored when the device has a hinge. This means that you can focus on how the layout works on large screens like tablets and desktops, while also having it adapt well to the dual-screen form factor by default.
-
-## TwoPane example
+Add `split_screen` to your dependencies, then place the wrapper directly in
+`MaterialApp.builder`, above navigators and full-view layouts:
 
 ```dart
-Widget build(BuildContext context) {
-  return TwoPane(
-    startPane: _widgetA(),
-    endPane: _widgetB(),
-    paneProportion: 0.3,
-    panePriority: MediaQuery.of(context).size.width > 500 ? TwoPanePriority.both :TwoPanePriority.pane1,
-  );
-}
+import 'package:flutter/material.dart';
+import 'package:split_screen/split_screen.dart';
+
+MaterialApp(
+  builder: (context, child) => SplitScreen(child: child),
+  home: const MyHome(),
+);
 ```
 
-This sample code produces the results at the beginning of this article:
+`SplitScreen({required Widget? child})` renders an empty widget for null and does
+not start observation. On native iOS it augments the **ambient** `MediaQuery`
+without replacing other metrics, padding, scaling, or display features. An
+engine-provided hinge or fold takes precedence over plugin folds. Resizing clears
+stale plugin geometry until a snapshot matching the new viewport arrives. Initial
+empty results are provisional; later geometry rebuilds consumers. The wrapper
+preserves child and Router state across these updates.
 
-- On **Surface Duo**, widget A and widget B both take one screen.
-  ![Flutter TwoPaneView on Surface Duo](https://github.com/microsoft/flutter-dualscreen/blob/main/images/twopaneview-surfaceduo-simple.png)
-- On a **tablet** or **desktop**, widget A takes 30% of the screen while widget B takes the remaining 70%.
-  ![Flutter TwoPaneView on desktop](https://github.com/microsoft/flutter-dualscreen/blob/main/images/twopaneview-desktop-simple.png)
-- On a **small phone** which is less than 500 logical pixels wide, only widget A is visible.
-  ![Flutter TwoPaneView on a candybar phone](https://github.com/microsoft/flutter-dualscreen/blob/main/images/twopaneview-phone-simple.png)
+`MediaQuery.of(context).fold` returns the first fold. The existing `.hinge` getter
+continues to return hinge features only. Do not use either getter as a substitute
+for querying angle-sensor capability.
 
-# Hinge angle sensor
+## TwoPane
 
-Foldable and dual-screen devices have a hinge between the two moving parts of the screen. This hinge has a sensor, reporting the angle between the parts of the screen. For example, when these parts lay flat to form a continuous surface, the hinge angle reports a 180 deg angle.
+```dart
+TwoPane(
+  startPane: const StartPane(),
+  endPane: const EndPane(),
+  paneProportion: 0.5,
+  panePriority: MediaQuery.sizeOf(context).width >= 600
+      ? TwoPanePriority.both
+      : TwoPanePriority.start,
+)
+```
 
-> The hinge angle is used to determine the [device posture](https://developer.android.com/guide/topics/ui/foldables#postures). If you're looking to write code that depends on the device posture, we recommend using the functionality provided by [MediaQuery Display Features](https://docs.microsoft.com/en-us/dual-screen/flutter/mediaquery) instead.
+Without a separating feature, `direction`, `paneProportion`, and `panePriority`
+control the layout. A separating feature normally overrides them to put both
+panes on opposite sides of its full bounds. `allowedOverrides` retains its
+existing rules and lets callers disable individual overrides. RTL and
+`verticalDirection` determine pane order. Use `padding` to account for spacing
+between the widget and the full-view `MediaQuery`.
+
+A zero-width vertical fold or zero-height horizontal fold can separate panes if
+it spans the viewport in the other direction and lies strictly inside the split
+axis. `TwoPane` behavior is unchanged; its earlier zero-area documentation was
+incorrect. Padding and insets are adjusted for each pane.
+
+## iOS fold layout and angles
+
+Layout queries only **active `.division` reserved regions**, explicitly filters
+`isActive`, and preserves their complete reported frames, including interactive
+margins. It does not request inactive regions or turn camera occlusions into
+folds. A flat device normally has no active division to avoid; the example then
+chooses both panes at widths >=600 logical pixels and the start pane otherwise.
+An active separating region still applies the existing override rules.
+
+Angle reporting is independent of layout. `UIHingeInteraction` provides readings
+in radians, converted to degrees without synthesized readings or device-specific
+thresholds. Partially open status maps to half-opened posture; fully open maps
+to flat; other statuses map to unknown. Region activity alone determines whether
+layout publishes a fold. Closed and flat angle readings are retained when the
+hierarchy supplies them. No sensor precision, callback frequency, or physical
+accuracy is promised.
+
+The observer is transparent and noninteractive, attached to the registrar's
+Flutter view. It uses that view's scene and coordinates; there is no global
+screen/window selection. Capability waits for the initial callback, up to two
+seconds. An unavailable hierarchy returns false for that request, without caching
+it permanently. Detachment and backgrounding pause native observation and clear
+fold data; existing subscriptions resume when the hierarchy becomes usable.
+Teardown removes interactions, observers, and pending callbacks.
+
+Layout, safe-area, hinge, and scene callbacks refresh native geometry; a second
+layout pass lets region changes settle after a hinge update. Attached idle views
+have no continuous frame timer. A lightweight retry runs only while waiting for a
+usable Flutter hierarchy, and region queries run only for layout subscribers.
+
+Additional scenes, outer-display content, and camera-region layout are outside
+this iteration. The example adopts the scene lifecycle with the existing Main
+and LaunchScreen storyboards and supports rotation and resizing.
 
 ## Hinge angle API
 
-To use this plugin, add `split_screen` as a dependency in your pubspec.yaml file.
-
-This will allow you to import DualScreenInfo `import 'package:split_screen/split_screen.dart';`
-
-DualScreenInfo exposes 2 static properties:
-
-- `hingeAngleEvents`: Broadcast stream of events from the device hinge angle sensor. If the device is not equipped with a hinge angle sensor, the stream produces no events.
-- `hasHingeAngleSensor`: Future returning true if the device has a hinge angle sensor. Alternatively, if your app already uses `MediaQuery.displayFeatures` or `MediaQuery.hinge` to adapt to foldable or dual-screen form factors, you can safely assume the hinge angle sensor exists and that `hingeAngleEvents` produces usable values.
-
-## Hinge angle example
-
 ```dart
-import 'package:split_screen/split_screen.dart';
-
-DualScreenInfo.hingeAngleEvents.listen((double hingeAngle) {
-  print(hingeAngle);
-});
-
-DualScreenInfo.hasHingeAngleSensor.then((bool hasHingeSensor) {
-  print(hasHingeSensor);
-});
+final supported = await DualScreenInfo.hasHingeAngleSensor;
+final subscription = DualScreenInfo.hingeAngleEvents.listen(
+  (degrees) => debugPrint('$degrees'),
+  onError: (Object error) => debugPrint('Sensor error: $error'),
+);
+// When the consumer is disposed:
+await subscription.cancel();
 ```
 
-## Testing
+The existing public call sites and channels
+`com.microsoft.flutterdualscreen/hinge_info` and
+`com.microsoft.flutterdualscreen/hinge_angle` are preserved. Finite numeric samples
+become doubles; invalid/null samples are ignored. The Android angle range is not
+clamped to an iPhone-specific range.
 
-Examples on how to mock the hinge angle or display features can be found in the [test](https://github.com/microsoft/flutter-dualscreen/tree/main/test) folder.
+Subscriptions are lazy and shared, replaying the latest value to concurrent
+listeners. Native observation stops after the final cancellation and discards
+stale readings. Reconnect waits for prior cancellation. Missing plugins produce
+empty streams (and false capability); genuine method, setup, event, and
+cancellation failures remain observable. This receiver catches activation and
+cancellation failures directly without replacing any global error handlers.
+The wrapper reports its operational channel errors through Flutter's existing
+error reporting mechanism.
 
-Testing the hinge angle sensor functionality can be done using the [Surface Duo emulator](https://docs.microsoft.com/en-us/dual-screen/android/emulator/get-started) or one of the [foldable emulators available in Android Studio](https://developer.android.com/guide/topics/ui/foldables#emulators). Both emulators provide a hinge angle virtual sensor. The Surface Duo emulator is the only one with two separate screens.
+The internal `split_screen/display_features` event channel sends snapshots:
 
-![Surface Duo Emulator Hinge Sensor](https://github.com/microsoft/flutter-dualscreen/blob/main/images/emulator_hinge_angle.jpg)
+```text
+{width, height, features: [{left, top, right, bottom, state}]}
+```
+
+All dimensions are finite logical coordinates relative to the Flutter viewport.
+`state` is `halfOpened`, `flat`, or `unknown`. Zero-width/height seams are valid.
+Native snapshots are coalesced with a 0.01 logical pixel tolerance. An empty
+feature list clears previous folds.
+
+## Validation
+
+```sh
+flutter pub get
+flutter test
+flutter analyze
+flutter test --platform chrome test/split_screen_web_test.dart
+flutter pub publish --dry-run
+cd example
+flutter pub get
+flutter test
+flutter analyze
+```
+
+Tests exercise isolated stream lifetimes and native calls, errors, replay,
+concurrency, reconnection, numeric decoding, late geometry, resize/removal,
+engine precedence, null children, Android/web passthrough, zero-area seams, RTL,
+padding, and overrides. See the [Windows validation record](doc/windows-validation.md),
+including the local browser-test workaround and dry-run warning. Windows cannot
+establish native compilation or runtime support. See
+[Mac checks and wired XCTest fixtures](doc/ios-validation.md).
+
+Implementation references: [Apple hinge interaction](https://developer.apple.com/documentation/uikit/uihingeinteraction),
+[Apple reserved regions](https://developer.apple.com/documentation/uikit/uiview/reservedregion),
+[Flutter SwiftPM packaging](https://docs.flutter.dev/packages-and-plugins/swift-package-manager/for-plugin-authors),
+and [Flutter scene migration](https://docs.flutter.dev/release/breaking-changes/uiscenedelegate).
 
 ## Contributing
 

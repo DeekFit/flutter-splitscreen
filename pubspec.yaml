@@ -1,12 +1,12 @@
 name: split_screen
 description: Foldable and dual-screen support, like the TwoPane widget and hinge angle sensor data. Forked from the Microsoft dual_screen package.
-version: 1.0.5
+version: 2.0.0-dev.1
 homepage: https://docs.microsoft.com/en-us/dual-screen/
 repository: https://github.com/DeekFit/flutter-splitscreen
 
 environment:
-  sdk: ">=2.12.0 < 4.0.0"
-  flutter: ">=2.10.0"
+  sdk: ">=3.10.0 <4.0.0"
+  flutter: ">=3.38.0"
 
 dependencies:
   flutter:
@@ -15,6 +15,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_lints: ^6.0.0
 
 flutter:
   plugin:
@@ -22,3 +23,5 @@ flutter:
       android:
         package: com.microsoft.flutterdualscreen
         pluginClass: DualScreenInfo
+      ios:
+        pluginClass: SplitScreenPlugin

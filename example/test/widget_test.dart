@@ -1,100 +1,81 @@
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-
 import 'package:split_screen_example/main.dart';
 
 void main() {
-  const EventChannel hingeAngleChannel =
-  EventChannel('com.microsoft.flutterdualscreen/hinge_angle');
-  const MethodChannel hingeInfoChannel =
-  MethodChannel('com.microsoft.flutterdualscreen/hinge_info');
-
+  TestWidgetsFlutterBinding.ensureInitialized();
+  final messenger =
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+  const info = MethodChannel('com.microsoft.flutterdualscreen/hinge_info');
+  const angle = MethodChannel('com.microsoft.flutterdualscreen/hinge_angle');
+  const codec = StandardMethodCodec();
+  late List<String> calls;
+  setUp(() {
+    calls = [];
+    messenger.setMockMethodCallHandler(angle, (call) async {
+      calls.add(call.method);
+      return null;
+    });
+  });
   tearDown(() {
-    hingeInfoChannel.setMockMethodCallHandler(null);
-    ServicesBinding.instance!.defaultBinaryMessenger
-        .setMockMessageHandler(hingeAngleChannel.name, null);
+    messenger.setMockMethodCallHandler(info, null);
+    messenger.setMockMethodCallHandler(angle, null);
   });
-
-  testWidgets('Hinge angle sensor exists', (WidgetTester tester) async {
-    hingeInfoChannel.setMockMethodCallHandler((MethodCall methodCall) async {
-      return true;
-    });
-
-    await tester.pumpWidget(MyApp());
-    await tester.pumpAndSettle();
-
-    expect(
-      find.text('Hinge angle sensor exists: true'),
-      findsOneWidget,
-    );
-  });
-
-  testWidgets('Hinge angle sensor does not exist', (WidgetTester tester) async {
-    hingeInfoChannel.setMockMethodCallHandler((MethodCall methodCall) async {
-      return false;
-    });
-
-    await tester.pumpWidget(MyApp());
-    await tester.pumpAndSettle();
-
-    expect(
-      find.text('Hinge angle sensor exists: false'),
-      findsOneWidget,
-    );
-  });
-
-  testWidgets('Hinge angle sensor is not supported by platform', (WidgetTester tester) async {
-    hingeInfoChannel.setMockMethodCallHandler((MethodCall methodCall) async {
-      throw MissingPluginException();
-    });
-
-    await tester.pumpWidget(MyApp());
-    await tester.pumpAndSettle();
-
-    expect(
-      find.text('Hinge angle sensor exists: false'),
-      findsOneWidget,
-    );
-  });
-
-  testWidgets('Hinge angle reports the value 123.0', (WidgetTester tester) async {
-    _mockSensorStream(hingeAngleChannel.name, [123.0]);
-
-    await tester.pumpWidget(MyApp());
-    await tester.pumpAndSettle();
-
-    expect(
-      find.text('Hinge angle is: 123.0'),
-      findsOneWidget,
-    );
-  });
-}
-
-void _mockSensorStream(
-    String channelName, List<double> multipleSensorValues) {
-  const StandardMethodCodec standardMethod = StandardMethodCodec();
-
-  ServicesBinding.instance!.defaultBinaryMessenger
-      .setMockMessageHandler(channelName, (ByteData? message) async {
-    final MethodCall methodCall = standardMethod.decodeMethodCall(message);
-    if (methodCall.method == 'listen') {
-      multipleSensorValues.forEach((element) {
-        ServicesBinding.instance!.defaultBinaryMessenger.handlePlatformMessage(
-          channelName,
-          standardMethod.encodeSuccessEnvelope(element),
-              (ByteData? reply) {},
-        );
+  for (final supported in [true, false]) {
+    testWidgets('sensor capability $supported', (tester) async {
+      messenger.setMockMethodCallHandler(info, (call) async {
+        expect(call.method, 'hasHingeAngleSensor');
+        return supported;
       });
-      ServicesBinding.instance!.defaultBinaryMessenger.handlePlatformMessage(
-        channelName,
-        null,
-            (ByteData? reply) {},
+      await tester.pumpWidget(const MyApp());
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Hinge angle sensor exists: $supported'),
+        findsOneWidget,
       );
-      return standardMethod.encodeSuccessEnvelope(null);
-    } else if (methodCall.method == 'cancel') {
-      return standardMethod.encodeSuccessEnvelope(null);
-    } else {
-      fail('Expected listen or cancel');
+      expect(calls, ['listen']);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+      expect(calls, ['listen', 'cancel']);
+    });
+  }
+  testWidgets('missing plugin falls back without errors', (tester) async {
+    messenger.setMockMessageHandler(angle.name, (_) async => null);
+    messenger.setMockMessageHandler(info.name, (_) async => null);
+    await tester.pumpWidget(const MyApp());
+    await tester.pumpAndSettle();
+    expect(find.text('Hinge angle sensor exists: false'), findsOneWidget);
+  });
+  testWidgets('live angle survives flat and closed readings and resizing', (
+    tester,
+  ) async {
+    messenger.setMockMethodCallHandler(info, (_) async => true);
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(500, 800);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    await tester.pumpWidget(const MyApp());
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Second pane:'), findsNothing);
+    for (final value in [123, 180, 0]) {
+      await messenger.handlePlatformMessage(
+        angle.name,
+        codec.encodeSuccessEnvelope(value),
+        (_) {},
+      );
+      await tester.pump();
+      expect(
+        find.text('Hinge angle is: ${value.toStringAsFixed(2)}'),
+        findsOneWidget,
+      );
     }
+    tester.view.physicalSize = const Size(800, 500);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Second pane:'), findsOneWidget);
+    expect(calls, ['listen']);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+    expect(calls, ['listen', 'cancel']);
   });
 }
