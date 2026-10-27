@@ -5,8 +5,10 @@
 Android implementation and Microsoft-prefixed channel names remain unchanged.
 
 This `duo` branch is a **2.0.0-dev.1 development build**. Dart behavior is tested on
-Windows. Native Swift compilation, packaging, and device/runtime behavior remain
-unverified until the [Mac validation checklist](doc/ios-validation.md) passes.
+Windows and Mac. Mac CocoaPods and SwiftPM builds reach native compilation but
+are blocked by the installed iOS 26.5 SDK lacking `UIHingeInteraction`.
+Native device/runtime behavior remains unverified; see the
+[Mac validation record](doc/ios-validation.md#mac-validation--october-27-2026).
 Nothing has been tagged or published.
 
 ## Toolchains
@@ -14,10 +16,10 @@ Nothing has been tagged or published.
 | Component | Minimum / supported validation combination |
 | --- | --- |
 | Dart | >=3.10.0 <4.0.0 |
-| Flutter with CocoaPods | 3.38+; validate the 3.38 baseline on Mac |
-| Flutter with SwiftPM | 3.44+ (current Flutter plugin packaging guide) |
+| Flutter with CocoaPods | 3.38+ declared; Mac validation uses installed 3.47.2 |
+| Flutter with SwiftPM | 3.44+; Mac validation uses installed 3.47.2 |
 | iOS deployment target | 15.0 |
-| Native compilation | Xcode 27.1 with the Duo SDK |
+| Native compilation | Xcode with a Duo SDK declaring the referenced UIKit APIs |
 | Duo APIs at runtime | iOS 27.1+, guarded with availability checks |
 
 Ordinary iPhones and older supported iOS runtimes return no Duo readings or
@@ -163,13 +165,13 @@ flutter test
 flutter analyze
 ```
 
-Tests exercise isolated stream lifetimes and native calls, errors, replay,
+Tests exercise isolated stream lifetimes and mocked native calls, errors, replay,
 concurrency, reconnection, numeric decoding, late geometry, resize/removal,
 engine precedence, null children, Android/web passthrough, zero-area seams, RTL,
-padding, and overrides. See the [Windows validation record](doc/windows-validation.md),
-including the local browser-test workaround and dry-run warning. Windows cannot
-establish native compilation or runtime support. See
-[Mac checks and wired XCTest fixtures](doc/ios-validation.md).
+padding, and overrides. See the [Windows validation record](doc/windows-validation.md)
+for its historical browser workaround and dry-run warning. The
+[Mac record and wired XCTest fixtures](doc/ios-validation.md) distinguish passing
+Dart checks from SDK-blocked native builds and untested runtime behavior.
 
 Implementation references: [Apple hinge interaction](https://developer.apple.com/documentation/uikit/uihingeinteraction),
 [Apple reserved regions](https://developer.apple.com/documentation/uikit/uiview/reservedregion),

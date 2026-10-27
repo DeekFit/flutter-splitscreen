@@ -4,8 +4,7 @@ Validated on October 17, 2026, on branch `duo`, created from the verified clean
 commit `5477c7e8cca4f6130de7b0bb224f2f27d2f0337f`.
 
 Toolchain: Flutter 3.47.4 stable, Dart 3.13.3, Windows x64. This does not substitute
-for the Flutter 3.38 CocoaPods / 3.44+ SwiftPM matrix in
-[iOS validation](ios-validation.md).
+for native CocoaPods / SwiftPM checks in [iOS validation](ios-validation.md).
 
 | Check | Result |
 | --- | --- |
@@ -19,8 +18,10 @@ for the Flutter 3.38 CocoaPods / 3.44+ SwiftPM matrix in
 | Swift, CocoaPods, SwiftPM, XCTest, simulator/device runtime | Not executable on Windows; pending Mac |
 
 The dry-run did not upload or publish anything. It initially also reported the
-plural `docs` directory; that was corrected to `doc`. The remaining warning is
-expected for this uncommitted implementation. No release tag was created.
+plural `docs` directory; that was corrected to `doc`. The remaining warning was
+for changes that were uncommitted at the time of the Windows run. That warning
+is historical: the handoff was committed as
+`379dfbe45f0bb9ad6161198ffffd0bbc5f4d5e90`. No release tag was created.
 
 The installed Flutter 3.47.4 Windows browser test server returned 404 for its
 `/canvaskit/chromium/canvaskit.js` and `.wasm` URLs even though those assets existed
@@ -35,9 +36,10 @@ resolved; repeat the browser check on another toolchain/host as appropriate.
 Command logs are in ignored local `build/package-tests.log`,
 `build/web-test.log`, and `build/publish-dry-run.log`. Native fixtures and their
 host generator are checked in; their compilation and execution are unverified.
-The [Mac checklist](ios-validation.md) includes exact build/test commands and a
-place to record simulator controls, unavailable poses/runtimes, and physical
-sensor accuracy deferred to hardware.
+The [Mac validation record](ios-validation.md#mac-validation--october-27-2026)
+now records passing Dart checks with the installed Flutter 3.47.2, a corrected
+SwiftPM fixture scheme, and both native integrations blocked by missing Duo APIs
+in the installed iOS 26.5 SDK. No native runtime or sensor validation is claimed.
 
 ## Combined review follow-up
 
@@ -51,8 +53,10 @@ The Flutter subreview and Antigravity review were combined as follows:
   hinge updates. Attachment retries stop once the hierarchy is usable, and
   angle-only subscribers do not query regions. Added native fixtures for these
   behaviors; they remain uncompiled and unexecuted until Mac validation.
-* Kept the explicitly agreed Xcode 27.1 + Duo SDK build requirement. A Swift
-  compiler-version check alone cannot establish whether the SDK has Duo APIs.
+* At handoff, kept the agreed Xcode 27.1 + Duo SDK build requirement. The Mac
+  follow-up supersedes the exact-version matrix with the installed toolchain
+  and verifies missing API declarations directly. A Swift compiler-version
+  check alone cannot establish whether the SDK has Duo APIs.
 * Kept wrapper placement documented instead of warning whenever a hinge exists
   without a fold: an inactive division on a flat device is valid behavior.
 

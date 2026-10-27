@@ -34,7 +34,8 @@ if mode == 'swiftpm'
   FileUtils.mkdir_p(File.join(flutter, 'Sources/FlutterFramework'))
   File.write(File.join(flutter, 'Sources/FlutterFramework/FlutterFramework.swift'), "@_exported import Flutter\n")
   Dir.chdir(File.join(work, 'split_screen')) do
-    run!('xcodebuild', '-scheme', 'split-screen', '-destination', "id=#{simulator}",
+    # Xcode names the automatic test scheme after the package, not its library product.
+    run!('xcodebuild', '-scheme', 'split_screen', '-destination', "id=#{simulator}",
          '-resultBundlePath', File.join(work, 'SwiftPM.xcresult'), 'test', 'CODE_SIGNING_ALLOWED=NO')
   end
 else
