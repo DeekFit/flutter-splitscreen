@@ -20,7 +20,7 @@ class DualScreenInfo {
   static Stream<double> get hingeAngleEvents => _hingeAngleEvents;
 
   /// Whether the attached view hierarchy supplies a hinge angle sensor.
-  /// Missing plugins return false; operational errors are propagated.
+  /// Capability-query failures, including missing plugins, return false.
   /// iOS can wait up to two seconds for initial attachment and data.
   static Future<bool> get hasHingeAngleSensor async {
     try {
@@ -28,7 +28,7 @@ class DualScreenInfo {
             'hasHingeAngleSensor',
           ) ??
           false;
-    } on MissingPluginException {
+    } catch (_) {
       return false;
     }
   }

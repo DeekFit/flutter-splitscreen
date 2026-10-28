@@ -48,6 +48,62 @@ void main() {
   tearDown(() => native.dispose());
 
   testWidgets(
+    'inactive and background periods retain the second pane Navigator until division removal',
+    (tester) async {
+      tester.binding.window.devicePixelRatioTestValue = 1;
+      tester.binding.window.physicalSizeTestValue = const Size(800, 600);
+      addTearDown(tester.binding.window.clearDevicePixelRatioTestValue);
+      addTearDown(tester.binding.window.clearPhysicalSizeTestValue);
+      await tester.pumpWidget(MaterialApp(
+        home: TwoPane(
+          panePriority: TwoPanePriority.start,
+          startPane: const Text('Start'),
+          endPane: Navigator(
+            onGenerateRoute: (_) =>
+                MaterialPageRoute<void>(builder: (_) => const _Counter()),
+          ),
+        ),
+      ));
+      await tester.pump();
+      await native.send(
+        _snapshot(const Size(800, 600), const Rect.fromLTRB(390, 0, 410, 600)),
+      );
+      await tester.pumpAndSettle();
+      final navigator = tester.state<NavigatorState>(find.byType(Navigator).last);
+      navigator.push<void>(MaterialPageRoute<void>(builder: (_) => const _Counter()));
+      await tester.pumpAndSettle();
+      final counter = tester.state<_CounterState>(find.byType(_Counter).last);
+      await tester.tap(find.text('Count: 0').last);
+      await tester.pump();
+      // Native fixtures verify that suspension emits no empty layout. This
+      // channel fixture exercises Flutter's response to that lifecycle contract.
+      for (final state in [AppLifecycleState.inactive, AppLifecycleState.paused,
+                           AppLifecycleState.resumed]) {
+        tester.binding.handleAppLifecycleStateChanged(state);
+        await tester.pump();
+        expect(tester.state(find.byType(Navigator).last), same(navigator));
+        expect(tester.state(find.byType(_Counter).last), same(counter));
+        expect(find.text('Count: 1'), findsOneWidget);
+        expect(navigator.canPop(), isTrue);
+      }
+      await native.send(
+        _snapshot(const Size(800, 600), const Rect.fromLTRB(300, 0, 330, 600)),
+      );
+      await tester.pump();
+      expect(tester.state(find.byType(Navigator).last), same(navigator));
+      expect(tester.getRect(find.byType(_Counter).last).left, 330);
+      await native.send(_snapshot(const Size(800, 600)));
+      await tester.pump();
+      expect(find.byType(_Counter), findsNothing);
+      expect(navigator.mounted, isFalse);
+      expect(find.text('Start'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+  );
+
+  testWidgets(
     'unwrapped TwoPane preserves a Navigator through late folds and rotation',
     (tester) async {
       tester.binding.window.devicePixelRatioTestValue = 1;

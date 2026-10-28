@@ -8,7 +8,9 @@ import 'native_event_stream.dart';
 
 /// Augments the ambient MediaQuery with native iOS folds.
 /// TwoPane already does this internally. This optional wrapper is useful for
-/// custom layouts that read display features outside TwoPane.
+/// custom layouts that read display features outside TwoPane. It augments only
+/// its descendants, so those consumers need this wrapper at the app root.
+/// Duo divisions are folds; physical-hinge-only checks will not detect them.
 /// Place at the root: `builder: (_, child) => SplitScreen(child: child)`.
 /// Engine-provided hinge/fold features take precedence. Other platforms pass
 /// through unchanged. A null child never starts native observation.

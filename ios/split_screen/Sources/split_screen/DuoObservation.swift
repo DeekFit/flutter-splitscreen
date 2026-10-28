@@ -66,6 +66,11 @@ final class DuoObservation {
     private let attachmentRetry: AttachmentRetryScheduling
     private var observer: HierarchyObserver?
     private weak var attachedScene: UIWindowScene?
+    private var attachedWindowID: ObjectIdentifier?
+    private var attachedSceneID: ObjectIdentifier?
+    private var snapshotBounds: CGRect?
+    private var snapshotCoordinates: [CGPoint]?
+    private var needsLayoutReplay = false
     private var suspended = false
     private var observing = false
     private var generation = 0
@@ -94,17 +99,20 @@ final class DuoObservation {
         }
         layout.changed = { [weak self] in
             guard let self = self else { return }
-            self.previous = nil
+            self.needsLayoutReplay = self.layout.sink != nil
             self.demandChanged()
             if self.layout.sink != nil { self.observer?.setNeedsLayout() }
         }
         for name in [UIScene.didActivateNotification, UIScene.willDeactivateNotification,
+                     UIScene.didEnterBackgroundNotification,
                      UIScene.didDisconnectNotification] {
             notifications.append(NotificationCenter.default.addObserver(
                 forName: name, object: nil, queue: .main) { [weak self] notification in
-                guard let self = self, let scene = notification.object as? UIWindowScene,
+                guard let scene = notification.object as? UIWindowScene else { return }
+                guard let self = self,
                       scene === self.observer?.window?.windowScene || scene === self.attachedScene else { return }
                 self.suspended = name != UIScene.didActivateNotification
+                if name == UIScene.didDisconnectNotification { self.invalidateLayout() }
                 self.refresh()
             })
         }
@@ -114,7 +122,9 @@ final class DuoObservation {
         guard !tornDown else { completion(false); return }
         let id = UUID()
         pending[id] = completion
-        let timeout = DispatchWorkItem { [weak self] in self?.resolve(id, value: false) }
+        let timeout = DispatchWorkItem { [weak self] in
+            self?.resolve(id, value: false)
+        }
         timeouts[id] = timeout
         DispatchQueue.main.asyncAfter(deadline: .now() + 2, execute: timeout)
         demandChanged()
@@ -130,6 +140,9 @@ final class DuoObservation {
         } else {
             attachmentRetry.cancel()
             pause()
+            previous = nil
+            snapshotBounds = nil
+            snapshotCoordinates = nil
             observer?.changed = nil
             observer?.removeFromSuperview()
             observer = nil
@@ -146,9 +159,20 @@ final class DuoObservation {
                 attachmentRetry.schedule { [weak self] in self?.refresh() }
             }
         }
-        guard let view = viewProvider?() else { pause(); return }
+        guard let view = viewProvider?() else {
+            pause()
+            invalidateLayout()
+            observer?.changed = nil
+            observer?.removeFromSuperview()
+            observer = nil
+            attachedWindowID = nil
+            attachedSceneID = nil
+            attachedScene = nil
+            return
+        }
         if observer?.superview !== view {
             pause()
+            invalidateLayout()
             observer?.changed = nil
             observer?.removeFromSuperview()
             let anchor = HierarchyObserver(frame: view.bounds)
@@ -163,12 +187,32 @@ final class DuoObservation {
         }
         guard let anchor = observer else { pause(); return }
         let scene = anchor.window?.windowScene
-        if attachedScene !== scene {
+        let windowID = anchor.window.map(ObjectIdentifier.init)
+        let sceneID = scene.map(ObjectIdentifier.init)
+        if attachedWindowID != windowID || attachedSceneID != sceneID {
             pause()
+            invalidateLayout()
+            attachedWindowID = windowID
+            attachedSceneID = sceneID
             attachedScene = scene
-            suspended = scene?.activationState == .background || scene?.activationState == .unattached
+            suspended = scene.map { $0.activationState != .foregroundActive } ?? false
         }
-        guard !suspended, hierarchyIsActive(anchor) else { pause(); return }
+        guard !suspended, hierarchyIsActive(anchor) else {
+            pause()
+            // Discard incompatible cached coordinates without publishing an
+            // invented empty region query during suspension. Flutter separately
+            // rejects snapshots whose viewport does not match its own metrics.
+            if let bounds = snapshotBounds,
+               bounds != view.bounds || snapshotCoordinates != coordinates(of: view) {
+                snapshotBounds = nil
+                snapshotCoordinates = nil
+            }
+            if needsLayoutReplay, snapshotBounds != nil, let snapshot = previous {
+                needsLayoutReplay = false
+                layout.sink?(snapshot.payload)
+            }
+            return
+        }
         anchor.frame = view.bounds
         if !observing {
             observing = true
@@ -192,12 +236,15 @@ final class DuoObservation {
     }
 
     private func publish() {
-        guard layout.sink != nil, let anchor = observer,
+        guard observing, layout.sink != nil, let anchor = observer,
               let view = anchor.superview else { return }
-        let frames = observing ? regions.divisions(in: anchor) : []
+        let frames = regions.divisions(in: anchor)
         guard let snapshot = FoldSnapshot.make(view: view, source: anchor, frames: frames,
                                                state: reading?.state ?? "unknown") else { return }
-        if let old = previous, old.approximatelyEquals(snapshot) { return }
+        snapshotBounds = view.bounds
+        snapshotCoordinates = coordinates(of: view)
+        if !needsLayoutReplay, let old = previous, old.approximatelyEquals(snapshot) { return }
+        needsLayoutReplay = false
         previous = snapshot
         layout.sink?(snapshot.payload)
     }
@@ -208,7 +255,28 @@ final class DuoObservation {
         hinge.stop()
         reading = nil
         initialized = false
-        publish()
+    }
+
+    /// Only host/viewport invalidation or an active region query may clear layout.
+    /// Sensor suspension must leave the last valid split in place.
+    private func invalidateLayout() {
+        snapshotBounds = nil
+        snapshotCoordinates = nil
+        guard let old = previous else { return }
+        let empty = FoldSnapshot(size: old.size, frames: [], state: "unknown")
+        previous = empty
+        if needsLayoutReplay || !old.approximatelyEquals(empty) {
+            needsLayoutReplay = false
+            layout.sink?(empty.payload)
+        }
+    }
+
+    // Three points capture the viewport's affine mapping into its window,
+    // including movement or transforms that do not change the bounds size.
+    private func coordinates(of view: UIView) -> [CGPoint] {
+        let bounds = view.bounds
+        return [bounds.origin, CGPoint(x: bounds.maxX, y: bounds.minY),
+                CGPoint(x: bounds.minX, y: bounds.maxY)].map { view.convert($0, to: view.window) }
     }
 
     private func resolve(_ id: UUID, value: Bool) {
@@ -227,6 +295,7 @@ final class DuoObservation {
         tornDown = true
         attachmentRetry.cancel()
         pause()
+        invalidateLayout()
         angle.sink = nil
         layout.sink = nil
         angle.changed = nil
@@ -235,6 +304,8 @@ final class DuoObservation {
         observer?.removeFromSuperview()
         observer = nil
         attachedScene = nil
+        attachedWindowID = nil
+        attachedSceneID = nil
         viewProvider = nil
         for token in notifications { NotificationCenter.default.removeObserver(token) }
         notifications.removeAll()

@@ -200,19 +200,17 @@ class TwoPane extends StatelessWidget {
       SplitScreen(child: Builder(builder: _buildPanes));
 
   Widget _buildPanes(BuildContext context) {
-    assert(
-      textDirection != null ||
-          debugCheckHasDirectionality(
-            context,
-            why:
-                'to determine what pane goes on the right or left side. The real '
-                'direction of TwoPane is horizontal when there are display features '
-                'separating the screen into two horizontal sub-screens, in which case '
-                'the provided "direction" is ignored.',
-            alternative:
-                "Alternatively, consider specifying the 'textDirection' argument on the TwoPane.",
-          ),
-    );
+    assert(textDirection != null ||
+        debugCheckHasDirectionality(
+          context,
+          why:
+              'to determine what pane goes on the right or left side. The real '
+              'direction of TwoPane is horizontal when there are display features '
+              'separating the screen into two horizontal sub-screens, in which case '
+              'the provided "direction" is ignored.',
+          alternative:
+              "Alternatively, consider specifying the 'textDirection' argument on the TwoPane.",
+        ));
     final TextDirection resolvedTextDirection = _resolveTextDirection(context);
 
     final MediaQueryData? mediaQuery = MediaQuery.maybeOf(context);
@@ -235,16 +233,14 @@ class TwoPane extends StatelessWidget {
       size = position.size;
       final Iterable<DisplayFeature> separatingDisplayFeatures =
           _separatingDisplayFeatures(mediaQuery.displayFeatures, position);
-      resolvedDirection = _resolveDirection(
-        separatingDisplayFeatures,
-        position,
-      );
+      resolvedDirection =
+          _resolveDirection(separatingDisplayFeatures, position);
       final DisplayFeature? displayFeature = _firstDisplayFeature(
-        separatingDisplayFeatures,
-        resolvedDirection,
-        resolvedTextDirection,
-        verticalDirection,
-        position,
+          separatingDisplayFeatures,
+          resolvedDirection,
+          resolvedTextDirection,
+          verticalDirection,
+          position,
       );
       if (displayFeature == null) {
         displayFeatureBounds = null;
@@ -275,9 +271,7 @@ class TwoPane extends StatelessWidget {
       resolvedDelimiter = const SizedBox();
     } else {
       // We are showing both panes
-      bool allowProportionOverride = allowedOverrides.contains(
-        TwoPaneAllowedOverrides.paneProportion,
-      );
+      bool allowProportionOverride = allowedOverrides.contains(TwoPaneAllowedOverrides.paneProportion);
       switch (resolvedDirection) {
         case Axis.horizontal:
           {
@@ -285,12 +279,8 @@ class TwoPane extends StatelessWidget {
             late final Rect seam;
             if (displayFeatureBounds == null || !allowProportionOverride) {
               // Simulate a display feature using paneProportion
-              seam = Rect.fromLTWH(
-                paneProportion * size.width,
-                0,
-                0,
-                size.height,
-              );
+              seam =
+                  Rect.fromLTWH(paneProportion * size.width, 0, 0, size.height);
             } else {
               seam = displayFeatureBounds;
             }
@@ -339,12 +329,8 @@ class TwoPane extends StatelessWidget {
             late final Rect seam;
             if (displayFeatureBounds == null || !allowProportionOverride) {
               // Simulate a display feature using paneProportion
-              seam = Rect.fromLTWH(
-                0,
-                paneProportion * size.height,
-                size.width,
-                0,
-              );
+              seam =
+                  Rect.fromLTWH(0, paneProportion * size.height, size.width, 0);
             } else {
               seam = displayFeatureBounds;
             }
@@ -401,15 +387,19 @@ class TwoPane extends StatelessWidget {
       children: <Widget>[
         if (resolvedPanePriority != TwoPanePriority.end)
           KeyedSubtree.wrap(
-            Expanded(flex: startPaneFlex, child: resolvedStartPane),
-            1,
-          ),
+              Expanded(
+                flex: startPaneFlex,
+                child: resolvedStartPane,
+              ),
+              1),
         if (resolvedPanePriority == TwoPanePriority.both) resolvedDelimiter,
         if (resolvedPanePriority != TwoPanePriority.start)
           KeyedSubtree.wrap(
-            Expanded(flex: endPaneFlex, child: resolvedEndPane),
-            2,
-          ),
+              Expanded(
+                flex: endPaneFlex,
+                child: resolvedEndPane,
+              ),
+              2),
       ],
     );
   }
@@ -427,10 +417,8 @@ class TwoPane extends StatelessWidget {
   ///   * If multiple are found in both directions, then the provided
   ///     [direction] is used.
   Axis _resolveDirection(
-    Iterable<DisplayFeature> separatingFeatures,
-    Rect position,
-  ) {
-    if (!allowedOverrides.contains(TwoPaneAllowedOverrides.direction)) {
+      Iterable<DisplayFeature> separatingFeatures, Rect position) {
+    if (!allowedOverrides.contains(TwoPaneAllowedOverrides.direction)){
       return direction;
     }
     bool verticalSubScreensExist = false;
@@ -459,12 +447,11 @@ class TwoPane extends StatelessWidget {
   /// [verticalDirection] are used to determine the first one, according
   /// [direction].
   static DisplayFeature? _firstDisplayFeature(
-    Iterable<DisplayFeature> displayFeatures,
-    Axis direction,
-    TextDirection textDirection,
-    VerticalDirection verticalDirection,
-    Rect position,
-  ) {
+      Iterable<DisplayFeature> displayFeatures,
+      Axis direction,
+      TextDirection textDirection,
+      VerticalDirection verticalDirection,
+      Rect position) {
     if (displayFeatures.isEmpty) {
       return null;
     }
@@ -479,16 +466,14 @@ class TwoPane extends StatelessWidget {
             switch (textDirection) {
               case TextDirection.ltr:
                 {
-                  if (result == null ||
-                      displayFeature.bounds.left < result.bounds.left) {
+                  if (result==null || displayFeature.bounds.left < result.bounds.left) {
                     result = displayFeature;
                   }
                 }
                 break;
               case TextDirection.rtl:
                 {
-                  if (result == null ||
-                      displayFeature.bounds.right > result.bounds.right) {
+                  if (result==null || displayFeature.bounds.right > result.bounds.right) {
                     result = displayFeature;
                   }
                 }
@@ -504,16 +489,14 @@ class TwoPane extends StatelessWidget {
             switch (verticalDirection) {
               case VerticalDirection.down:
                 {
-                  if (result == null ||
-                      displayFeature.bounds.top < result.bounds.top) {
+                  if (result==null || displayFeature.bounds.top < result.bounds.top) {
                     result = displayFeature;
                   }
                 }
                 break;
               case VerticalDirection.up:
                 {
-                  if (result == null ||
-                      displayFeature.bounds.bottom > result.bounds.bottom) {
+                  if (result==null || displayFeature.bounds.bottom > result.bounds.bottom) {
                     result = displayFeature;
                   }
                 }
@@ -538,9 +521,7 @@ class TwoPane extends StatelessWidget {
   ///     sub-screen or it is at least as wide as the screen, producing a top and
   ///     bottom sub-screen.
   static Iterable<DisplayFeature> _separatingDisplayFeatures(
-    Iterable<DisplayFeature> displayFeatures,
-    Rect position,
-  ) {
+      Iterable<DisplayFeature> displayFeatures, Rect position) {
     final List<DisplayFeature> result = <DisplayFeature>[];
     for (final DisplayFeature displayFeature in displayFeatures) {
       final Rect bounds = displayFeature.bounds;
@@ -568,17 +549,13 @@ class TwoPane extends StatelessWidget {
     return wideEnough && splitsVertically;
   }
 
-  static MediaQueryData _removeMediaQueryPadding(
-    MediaQueryData data,
-    Rect subScreen,
-  ) {
+  static MediaQueryData _removeMediaQueryPadding(MediaQueryData data, Rect subScreen) {
     assert(
-      subScreen.left >= 0.0 &&
-          subScreen.top >= 0.0 &&
-          subScreen.right <= data.size.width &&
-          subScreen.bottom <= data.size.height,
-      "'subScreen' argument cannot be outside the bounds of the screen",
-    );
+    subScreen.left >= 0.0 &&
+        subScreen.top >= 0.0 &&
+        subScreen.right <= data.size.width &&
+        subScreen.bottom <= data.size.height,
+    "'subScreen' argument cannot be outside the bounds of the screen");
     if (subScreen.size == data.size && subScreen.topLeft == Offset.zero) {
       return data;
     }
@@ -620,4 +597,8 @@ enum TwoPanePriority {
   end,
 }
 
-enum TwoPaneAllowedOverrides { direction, panePriority, paneProportion }
+enum TwoPaneAllowedOverrides {
+  direction,
+  panePriority,
+  paneProportion,
+}

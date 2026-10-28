@@ -14,6 +14,8 @@ extension MediaQueryHinge on MediaQueryData {
     return null;
   }
 
+  /// The first physical hinge. Continuous-screen folds, including native Duo
+  /// divisions, are available through [fold] or [displayFeatures] instead.
   DisplayFeature? get hinge {
     for (final DisplayFeature e in displayFeatures) {
       if (e.type == DisplayFeatureType.hinge) {

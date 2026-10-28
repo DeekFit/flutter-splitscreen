@@ -29,7 +29,13 @@ The package retains its Dart 2.12+ and Flutter 2.10+ minimums.
 | Web, Windows, macOS, Linux | Layout widgets and supplied display features; no native angle-sensor integration |
 
 Building for iOS requires Xcode 27.1 with the Duo SDK and a deployment target of
-iOS 15 or later. Duo APIs are guarded at runtime for iOS 27.1+. CocoaPods and
+iOS 15 or later. Duo APIs are guarded at runtime for iOS 27.1+. Every iOS host
+built with Xcode 27 must adopt the UIScene lifecycle. Flutter 3.41+ automatically
+migrates eligible hosts; custom AppDelegates and older Flutter hosts require
+manual migration using Flutter's official
+[UIScene migration guide](https://docs.flutter.dev/release/breaking-changes/uiscenedelegate).
+This is a host integration requirement, separate from the package-wide Dart,
+Flutter, and Android minimums. CocoaPods and
 Swift Package Manager are supported; the newer SwiftPM integration requires
 Flutter 3.44+. These iOS requirements do not apply to Android or web builds.
 iOS support has been tested in simulators; physical-device sensor accuracy has
@@ -112,7 +118,9 @@ This sample code produces the results at the beginning of this article:
 
 `TwoPane` handles native Duo geometry internally. If your own widgets read
 `MediaQuery.displayFeatures` outside `TwoPane`, use the optional `SplitScreen`
-wrapper to expose Duo divisions to that subtree:
+wrapper at the app root to expose Duo divisions to that subtree. A `TwoPane`
+can only update MediaQuery for its descendants; it cannot update an ancestor
+or a sibling custom layout:
 
 ```dart
 MaterialApp(
@@ -124,7 +132,34 @@ MaterialApp(
 It preserves other MediaQuery metrics and gives engine-provided hinges and
 folds precedence. Nested layouts respect their ancestor's transformed or
 filtered display features. `MediaQuery.of(context).hinge` still returns physical
-hinges only; the new `.fold` getter returns the first fold feature.
+hinges only; existing `.hinge` checks do not detect continuous-screen folds.
+Duo divisions use `DisplayFeatureType.fold`, and the new `.fold` getter returns
+the first fold feature. A custom layout can handle both types explicitly:
+
+```dart
+class MyCustomLayout extends StatelessWidget {
+  const MyCustomLayout({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final divisions = MediaQuery.of(context).displayFeatures.where(
+      (feature) => feature.type == DisplayFeatureType.fold ||
+          feature.type == DisplayFeatureType.hinge,
+    );
+    return Stack(children: [
+      const Center(child: Text('Custom content')),
+      for (final feature in divisions)
+        Positioned.fromRect(
+          rect: feature.bounds,
+          child: const ColoredBox(color: Color(0xFF808080)),
+        ),
+    ]);
+  }
+}
+```
+
+This example marks reported feature bounds; a pane layout should also check
+whether each feature spans its viewport before treating it as a separator.
 
 # Hinge angle sensor
 
@@ -147,8 +182,8 @@ Angle observation is lazy and shared. New concurrent listeners receive the
 latest reading, and native observation stops after the final cancellation.
 Supplied flat and closed readings are retained without clamping Android angles
 to an iPhone-specific range. Missing plugins return false capability and empty
-streams; operational errors reach the capability future, stream listener, or
-cancellation future. On iOS, capability initialization can wait up to two seconds
+streams. Capability-query failures return false. Angle-stream operational
+errors reach the stream listener or cancellation future. On iOS, capability initialization can wait up to two seconds
 for attachment and can be queried again if the view was initially unavailable.
 
 ## Hinge angle example
@@ -164,8 +199,6 @@ final subscription = DualScreenInfo.hingeAngleEvents.listen((double hingeAngle) 
 
 DualScreenInfo.hasHingeAngleSensor.then((bool hasHingeSensor) {
   print(hasHingeSensor);
-}, onError: (Object error) {
-  print(error);
 });
 
 // When the consumer is disposed, call: await subscription.cancel();

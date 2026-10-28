@@ -14,9 +14,12 @@
 * Retain the Dart 2.12+ and Flutter 2.10+ package minimums from 1.x. iOS
   compilation requires Xcode 27.1 with the Duo SDK; the newer SwiftPM integration
   requires Flutter 3.44+.
-* **Breaking:** Propagate operational sensor errors to callers instead of
-  swallowing them. Missing plugins continue to return false capability and
-  empty streams.
+* Preserve nonthrowing capability queries: `hasHingeAngleSensor` returns false
+  on query failures, including missing plugins. Angle-stream operational errors
+  remain asynchronous stream or cancellation-future errors; missing plugins
+  produce empty streams.
+* Preserve valid division geometry during foreground inactivity and background
+  suspension, refreshing it on resume without an intermediate empty layout.
 
 ## 1.0.5
 * Forked from Microsoft's dual_screen project

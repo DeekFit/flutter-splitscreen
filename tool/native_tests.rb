@@ -78,7 +78,7 @@ else
     'CFBundleVersion' => '1', 'CFBundleShortVersionString' => '1.0',
     'UILaunchScreen' => {},
     'UIApplicationSceneManifest' => {
-      'UIApplicationSupportsMultipleScenes' => false,
+      'UIApplicationSupportsMultipleScenes' => true,
       'UISceneConfigurations' => {'UIWindowSceneSessionRoleApplication' => [{
         'UISceneClassName' => 'UIWindowScene', 'UISceneConfigurationName' => 'Tests',
         'UISceneDelegateClassName' => '$(PRODUCT_MODULE_NAME).TestSceneDelegate'

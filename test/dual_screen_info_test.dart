@@ -39,16 +39,16 @@ void main() {
       expect(calls, 1);
     });
   }
-  test('missing capability is false, operational errors propagate', () async {
+  test('missing capability and operational failures return false', () async {
     expect(await DualScreenInfo.hasHingeAngleSensor, false);
     messenger.setMockMethodCallHandler(
       info,
       (_) async => throw PlatformException(code: 'failed'),
     );
-    await expectLater(
-      DualScreenInfo.hasHingeAngleSensor,
-      throwsA(isA<PlatformException>()),
-    );
+    expect(await DualScreenInfo.hasHingeAngleSensor, false);
+    // Malformed replies are also capability failures, not stream errors.
+    messenger.setMockMethodCallHandler(info, (_) async => 'invalid');
+    expect(await DualScreenInfo.hasHingeAngleSensor, false);
   });
   test('delayed capability can later become available', () async {
     final ready = Completer<bool>();
