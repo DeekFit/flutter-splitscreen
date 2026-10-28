@@ -1,7 +1,7 @@
 name: split_screen
-description: Foldable and dual-screen support, like the TwoPane widget and hinge angle sensor data. Forked from the Microsoft dual_screen package.
-version: 2.0.0-dev.1
-homepage: https://docs.microsoft.com/en-us/dual-screen/
+description: Adaptive two-pane layouts and hinge-angle readings for Android foldables and iPhone Duo, with automatic division alignment and phone, tablet, desktop, and web layouts.
+version: 2.0.0
+homepage: https://github.com/DeekFit/flutter-splitscreen
 repository: https://github.com/DeekFit/flutter-splitscreen
 
 environment:

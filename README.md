@@ -1,49 +1,132 @@
 # Flutter Split Screen
 
-`split_screen` provides automatic two-pane layouts and hinge angle readings on
-Android and iPhone Duo. Forked from Microsoft's `dual_screen` package. The existing
-Android implementation and Microsoft-prefixed channel names remain unchanged.
+Adaptive two-pane layouts and hinge-angle readings for Flutter apps on Android
+foldables and iPhone Duo. The same `TwoPane` code also works on phones, tablets,
+desktops, and web.
 
-This `duo` branch is a **2.0.0-dev.1 development build**. Dart behavior is tested on
-Windows and Mac. Native XCTest fixtures pass through CocoaPods and SwiftPM with
-Xcode 27.1, and the example runs on the iOS 27.1 Duo simulator. See the
-[Mac validation record](doc/ios-validation.md#mac-validation--october-28-2026)
-for tested behavior and remaining runtime/hardware coverage.
-Nothing has been tagged or published.
+## Features
 
-## Toolchains
+* Automatically position panes on opposite sides of a separating hinge or fold.
+* Use horizontal, vertical, or single-pane layouts when there is no separating
+  display feature, with configurable proportions and pane priority.
+* On iPhone Duo, automatically use active division regions, including their
+  reported margins. No app wrapper or platform checks are required for `TwoPane`.
+* Preserve visible pane and Navigator state when folding, rotating, or resizing.
+* Read hinge angles independently of layout, including supplied flat and closed
+  readings. Concurrent listeners share native observation and receive its latest
+  reading; observation stops when the last listener cancels.
+* Support RTL pane ordering, padding, and zero-width or zero-height fold seams.
 
-| Component | Minimum / supported validation combination |
-| --- | --- |
-| Dart | >=3.10.0 <4.0.0 |
-| Flutter with CocoaPods | 3.38+ declared; Mac validation uses installed 3.47.2 |
-| Flutter with SwiftPM | 3.44+; Mac validation uses installed 3.47.2 |
-| iOS deployment target | 15.0 |
-| Native compilation | Xcode with a Duo SDK declaring the referenced UIKit APIs |
-| Duo APIs at runtime | iOS 27.1+, guarded with availability checks |
+## Supported platforms
 
-Ordinary iPhones and older supported iOS runtimes return no Duo readings or
-plugin folds. Android continues to use its existing sensor and engine display
-features. Other platforms, including web, can use `TwoPane` with their ambient
-`MediaQuery`.
+| Platform | TwoPane layout | Hinge-angle readings |
+| --- | --- | --- |
+| Android | Uses Flutter's hinge/fold display features | Available when the device provides a hinge sensor |
+| iPhone Duo, iOS 27.1+ | Automatically uses active division regions | Available through the Duo API |
+| Other iPhones, iOS 15+ | Uses the app's normal layout policy | No Duo readings |
+| Web, Windows, macOS, Linux | Uses the app's normal policy and any supplied display features | No native sensor integration |
 
-## Install
+Native iOS support has been tested in Duo and ordinary-iPhone simulators.
+Physical-device sensor accuracy has not been verified. A display feature does
+not by itself establish whether a hinge-angle sensor is available.
 
-Add `split_screen` to your dependencies and use `TwoPane` as usual. It observes
-native iPhone Duo divisions automatically; no app wrapper, platform checks, or
-iOS-specific layout code is required. Existing Android call sites keep working.
+## Requirements
+
+* Flutter 3.38 or later and Dart 3.10 or later.
+* iOS deployment target 15.0 or later.
+* To build for iOS, Xcode 27.1 with the Duo SDK is required, including when the
+  app runs on an older iPhone. Duo APIs are guarded at runtime for iOS 27.1+.
+* CocoaPods and Swift Package Manager are supported. SwiftPM requires Flutter
+  3.44 or later.
+
+## Installation
+
+```yaml
+dependencies:
+  split_screen: ^2.0.0
+```
+
+Then run `flutter pub get`.
+
+## TwoPane
 
 ```dart
 import 'package:flutter/material.dart';
 import 'package:split_screen/split_screen.dart';
 
-MaterialApp(
-  home: const MyHome(),
-);
+void main() => runApp(const MaterialApp(home: AdaptiveHome()));
+
+class AdaptiveHome extends StatelessWidget {
+  const AdaptiveHome({super.key});
+
+  @override
+  Widget build(BuildContext context) => TwoPane(
+    paneProportion: 0.35,
+    panePriority: MediaQuery.sizeOf(context).width >= 600
+        ? TwoPanePriority.both
+        : TwoPanePriority.start,
+    startPane: const Scaffold(
+      body: Center(child: Text('Items')),
+    ),
+    endPane: const Scaffold(
+      body: Center(child: Text('Details')),
+    ),
+  );
+}
 ```
 
-For custom layouts that read `MediaQuery.displayFeatures` outside `TwoPane`, the
-optional `SplitScreen` widget makes native divisions available to that subtree:
+This shows one pane on a narrow phone and 35%/65% columns on a wide screen.
+When a hinge or fold separates the available area, each pane occupies one side
+of the feature instead. Horizontal divisions produce top/bottom panes.
+
+| Parameter | Purpose |
+| --- | --- |
+| `startPane`, `endPane` | The two child widgets |
+| `paneProportion` | Fraction assigned to the start pane; defaults to `0.5` |
+| `panePriority` | Show `both`, `start`, or `end`; defaults to `both` |
+| `direction` | Axis when there is no separating feature; defaults to horizontal |
+| `textDirection`, `verticalDirection` | Pane ordering, as in `Flex` |
+| `padding` | Insets between this widget and its full-view `MediaQuery` bounds |
+| `allowedOverrides` | Which layout choices a separating feature may override |
+
+By default, a separating feature overrides direction, proportion, and priority.
+You can restrict those overrides, for example to keep a particular route in a
+single pane. Disabling proportion overrides also disables alignment to the
+feature's full bounds.
+
+`TwoPane` uses full-view display-feature coordinates. If it sits below an app
+bar or inside other insets, supply those offsets through `padding` so the panes
+align with the physical division. This applies on all platforms. Each pane's
+`MediaQuery` padding and insets are adjusted for its position.
+
+## Hinge angles
+
+```dart
+final supported = await DualScreenInfo.hasHingeAngleSensor;
+
+final subscription = DualScreenInfo.hingeAngleEvents.listen(
+  (double degrees) => debugPrint('Hinge angle: $degrees'),
+  onError: (Object error) => debugPrint('Sensor error: $error'),
+);
+
+// Cancel when the consumer is disposed.
+await subscription.cancel();
+```
+
+Readings are in degrees and are not clamped to an iPhone-specific range. Devices
+without a supported sensor produce no readings, rather than a synthetic zero.
+Missing native plugins return false capability and an empty stream.
+Initialization, stream, and cancellation errors are propagated to the caller.
+
+On iOS, capability initialization can wait up to two seconds for the attached
+view. A false result while the view is unavailable can be queried again later.
+Use active display features for pane layout; an angle reading is not required
+for `TwoPane` to split.
+
+## Custom display-feature layouts
+
+If your own widgets read `MediaQuery.displayFeatures` outside `TwoPane`, use the
+optional `SplitScreen` widget to expose native Duo divisions to that subtree:
 
 ```dart
 MaterialApp(
@@ -52,167 +135,49 @@ MaterialApp(
 );
 ```
 
-`SplitScreen({required Widget? child})` renders an empty widget for null and does
-not start observation. On native iOS it augments the **ambient** `MediaQuery`
-without replacing other metrics, padding, scaling, or display features. An
-engine-provided hinge or fold takes precedence over plugin folds. Resizing clears
-stale plugin geometry until a snapshot matching the new viewport arrives. Initial
-empty results are provisional; later geometry rebuilds consumers. The wrapper
-preserves child and Router state across these updates. `TwoPane` uses the same
-mechanism internally. Concurrent layouts share one native observation, and nested
-layouts respect their ancestor's transformed `MediaQuery` without reinserting
-full-view geometry. Adding the optional wrapper does not duplicate observation.
+It preserves the other `MediaQuery` metrics and gives engine-provided hinges
+and folds precedence. Nested layouts do not reinsert native geometry after an
+ancestor has transformed or removed display features. On other platforms it
+passes the child through unchanged.
 
-`MediaQuery.of(context).fold` returns the first fold. The existing `.hinge` getter
-continues to return hinge features only. Do not use either getter as a substitute
-for querying angle-sensor capability.
+`MediaQuery.of(context).hinge` returns the first physical hinge feature.
+`MediaQuery.of(context).fold` returns the first fold feature. These getters are
+layout helpers, not sensor-capability checks.
 
-## TwoPane
+## Upgrading from 1.x
 
-```dart
-TwoPane(
-  startPane: const StartPane(),
-  endPane: const EndPane(),
-  paneProportion: 0.5,
-  panePriority: MediaQuery.sizeOf(context).width >= 600
-      ? TwoPanePriority.both
-      : TwoPanePriority.start,
-)
-```
+Existing `TwoPane` constructors and `DualScreenInfo` calls are unchanged. Update
+the dependency to get automatic iPhone Duo layout support. Apps that explicitly
+restrict `allowedOverrides` continue to control their own layout policy.
 
-Without a separating feature, `direction`, `paneProportion`, and `panePriority`
-control the layout. A separating feature normally overrides them to put both
-panes on opposite sides of its full bounds. `allowedOverrides` retains its
-existing rules and lets callers disable individual overrides. RTL and
-`verticalDirection` determine pane order. Use `padding` to account for spacing
-between the widget and the full-view `MediaQuery`.
+Version 2 requires the toolchain minimums above. Sensor errors that were
+previously swallowed are now reported, so handle errors on futures, stream
+subscriptions, and subscription cancellation.
 
-A zero-width vertical fold or zero-height horizontal fold can separate panes if
-it spans the viewport in the other direction and lies strictly inside the split
-axis. Padding and insets are adjusted for each pane. The visible pane's state,
-including nested navigation, survives transitions between one and two panes.
+## Example and tests
 
-## iOS fold layout and angles
-
-Layout queries only **active `.division` reserved regions**, explicitly filters
-`isActive`, and preserves their complete reported frames, including interactive
-margins. It does not request inactive regions or turn camera occlusions into
-folds. A flat device normally has no active division to avoid; the example then
-chooses both panes at widths >=600 logical pixels and the start pane otherwise.
-An active separating region still applies the existing override rules.
-
-Angle reporting is independent of layout. `UIHingeInteraction` provides readings
-in radians, converted to degrees without synthesized readings or device-specific
-thresholds. Partially open status maps to half-opened posture; fully open maps
-to flat; other statuses map to unknown. Region activity alone determines whether
-layout publishes a fold. Closed and flat angle readings are retained when the
-hierarchy supplies them. No sensor precision, callback frequency, or physical
-accuracy is promised.
-
-The observer is transparent and noninteractive, attached to the registrar's
-Flutter view. It uses that view's scene and coordinates; there is no global
-screen/window selection. Capability waits for the initial callback, up to two
-seconds. An unavailable hierarchy returns false for that request, without caching
-it permanently. Detachment and backgrounding pause native observation and clear
-fold data; existing subscriptions resume when the hierarchy becomes usable.
-Teardown removes interactions, observers, and pending callbacks.
-
-Layout, safe-area, hinge, and scene callbacks refresh native geometry; a second
-layout pass lets region changes settle after a hinge update. Attached idle views
-have no continuous frame timer. A lightweight retry runs only while waiting for a
-usable Flutter hierarchy, and region queries run only for layout subscribers.
-
-Additional scenes, outer-display content, and camera-region layout are outside
-this iteration. The example adopts the scene lifecycle with the existing Main
-and LaunchScreen storyboards and supports rotation and resizing.
-
-## Hinge angle API
-
-```dart
-final supported = await DualScreenInfo.hasHingeAngleSensor;
-final subscription = DualScreenInfo.hingeAngleEvents.listen(
-  (degrees) => debugPrint('$degrees'),
-  onError: (Object error) => debugPrint('Sensor error: $error'),
-);
-// When the consumer is disposed:
-await subscription.cancel();
-```
-
-The existing public call sites and channels
-`com.microsoft.flutterdualscreen/hinge_info` and
-`com.microsoft.flutterdualscreen/hinge_angle` are preserved. Finite numeric samples
-become doubles; invalid/null samples are ignored. The Android angle range is not
-clamped to an iPhone-specific range.
-
-Subscriptions are lazy and shared, replaying the latest value to concurrent
-listeners. Native observation stops after the final cancellation and discards
-stale readings. Reconnect waits for prior cancellation. Missing plugins produce
-empty streams (and false capability); genuine method, setup, event, and
-cancellation failures remain observable. This receiver catches activation and
-cancellation failures directly without replacing any global error handlers.
-The wrapper reports its operational channel errors through Flutter's existing
-error reporting mechanism.
-
-The internal `split_screen/display_features` event channel sends snapshots:
-
-```text
-{width, height, features: [{left, top, right, bottom, state}]}
-```
-
-All dimensions are finite logical coordinates relative to the Flutter viewport.
-`state` is `halfOpened`, `flat`, or `unknown`. Zero-width/height seams are valid.
-Native snapshots are coalesced with a 0.01 logical pixel tolerance. An empty
-feature list clears previous folds.
-
-## Validation
+Run the [example](example/) with `flutter run` on a connected device or simulator.
+It demonstrates automatic pane layout, capability detection, and live angles.
 
 ```sh
-flutter pub get
 flutter test
 flutter analyze
-flutter test --platform chrome test/split_screen_web_test.dart
-flutter pub publish --dry-run
 cd example
-flutter pub get
 flutter test
 flutter analyze
 ```
 
-Tests exercise isolated stream lifetimes and mocked native calls, errors, replay,
-concurrency, reconnection, numeric decoding, late geometry, resize/removal,
-engine precedence, null children, Android/web passthrough, zero-area seams, RTL,
-padding, and overrides. See the [Windows validation record](doc/windows-validation.md)
-for its historical browser workaround and dry-run warning. The
-[Mac record and wired XCTest fixtures](doc/ios-validation.md) distinguish passing
-Dart checks from SDK-blocked native builds and untested runtime behavior.
+Native XCTest fixtures can be run on a Mac with an installed Flutter SDK and
+an available simulator:
 
-Implementation references: [Apple hinge interaction](https://developer.apple.com/documentation/uikit/uihingeinteraction),
-[Apple reserved regions](https://developer.apple.com/documentation/uikit/uiview/reservedregion),
-[Flutter SwiftPM packaging](https://docs.flutter.dev/packages-and-plugins/swift-package-manager/for-plugin-authors),
-and [Flutter scene migration](https://docs.flutter.dev/release/breaking-changes/uiscenedelegate).
+```sh
+ruby tool/native_tests.rb FLUTTER_SDK_PATH SIMULATOR_UDID cocoapods
+ruby tool/native_tests.rb FLUTTER_SDK_PATH SIMULATOR_UDID swiftpm
+```
 
-## Contributing
+The CocoaPods fixture runner requires CocoaPods and the `xcodeproj` Ruby gem.
 
-This project welcomes contributions and suggestions.  Most contributions require you to agree to a
-Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
-the rights to use your contribution. For details, visit https://cla.opensource.microsoft.com.
+## License
 
-When you submit a pull request, a CLA bot will automatically determine whether you need to provide
-a CLA and decorate the PR appropriately (e.g., status check, comment). Simply follow the instructions
-provided by the bot. You will only need to do this once across all repos using our CLA.
-
-This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
-For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
-contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
-
-## Trademarks
-
-This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft 
-trademarks or logos is subject to and must follow 
-[Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general).
-Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship.
-Any use of third-party trademarks or logos are subject to those third-party's policies.
-
-<!-- ## Special thanks -->
-
-<!-- The [split_screen](https://pub.dev/packages/split_screen) package was previously owned by [Built to Roam](https://pub.dev/publishers/builttoroam.com/) and it initially offered a way to know if your app is running on a dual screen device and if it is spanned across both screens or not. We would like to thank [Nick Randolph](https://github.com/nickrandolph), [Michael Bui](https://github.com/MaikuB) and [Brett Lim](https://github.com/Brett09) for transferring ownership of `split_screen` to Microsoft. -->
+Forked from Microsoft's `dual_screen` package. Distributed under the [MIT
+license](LICENSE).
