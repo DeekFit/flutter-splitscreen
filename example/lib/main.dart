@@ -6,10 +6,7 @@ void main() => runApp(const MyApp());
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
   @override
-  Widget build(BuildContext context) => MaterialApp(
-    builder: (context, child) => SplitScreen(child: child),
-    home: const SensorDemo(),
-  );
+  Widget build(BuildContext context) => MaterialApp(home: const SensorDemo());
 }
 
 class SensorDemo extends StatefulWidget {

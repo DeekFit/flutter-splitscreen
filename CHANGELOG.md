@@ -1,5 +1,10 @@
 ## 2.0.0-dev.1
 
+* `TwoPane` automatically consumes native iPhone Duo divisions with existing
+  call sites. The root `SplitScreen` wrapper is optional for custom MediaQuery
+  consumers. Nested layouts respect transformed geometry and share observation.
+* Preserve visible pane and nested Navigator state when late geometry switches
+  between one and two panes.
 * **Breaking:** Requires Dart >=3.10.0 <4.0.0 and Flutter >=3.38.0. iOS deployment
   target is 15.0; compiling the plugin requires Xcode 27.1 and the Duo SDK.
   Duo behavior is gated on iOS 27.1. CocoaPods supports Flutter 3.38+; SwiftPM

@@ -65,3 +65,13 @@ The Flutter subreview and Antigravity review were combined as follows:
 The two Flutter regressions failed before the fix; all ten wrapper tests pass
 after it. The web test result above is from the earlier run; its unchanged
 passthrough branch and the documented Windows server workaround still apply.
+
+## Automatic integration follow-up on Mac
+
+The [October 28 automatic integration record](ios-validation.md#automatic-twopane-integration--october-28-follow-up)
+supersedes the app-wrapper requirement above. `TwoPane` now observes native Duo
+geometry automatically with existing call sites; the optional wrapper remains
+for custom MediaQuery consumers. The Mac follow-up passes 72 package tests,
+5 example tests, both analyzers, and the updated browser test in installed Edge.
+It also reproduces and fixes Navigator state loss when a late division changes
+one visible pane into two. No new Windows run was performed for this follow-up.

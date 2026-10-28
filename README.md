@@ -1,7 +1,7 @@
 # Flutter Split Screen
 
-`split_screen` provides `TwoPane`, hinge angle readings, and an optional iOS
-`SplitScreen` wrapper. Forked from Microsoft's `dual_screen` package. The existing
+`split_screen` provides automatic two-pane layouts and hinge angle readings on
+Android and iPhone Duo. Forked from Microsoft's `dual_screen` package. The existing
 Android implementation and Microsoft-prefixed channel names remain unchanged.
 
 This `duo` branch is a **2.0.0-dev.1 development build**. Dart behavior is tested on
@@ -25,20 +25,30 @@ Nothing has been tagged or published.
 Ordinary iPhones and older supported iOS runtimes return no Duo readings or
 plugin folds. Android continues to use its existing sensor and engine display
 features. Other platforms, including web, can use `TwoPane` with their ambient
-`MediaQuery`; the iOS wrapper passes them through unchanged.
+`MediaQuery`.
 
-## Install and wrap the app
+## Install
 
-Add `split_screen` to your dependencies, then place the wrapper directly in
-`MaterialApp.builder`, above navigators and full-view layouts:
+Add `split_screen` to your dependencies and use `TwoPane` as usual. It observes
+native iPhone Duo divisions automatically; no app wrapper, platform checks, or
+iOS-specific layout code is required. Existing Android call sites keep working.
 
 ```dart
 import 'package:flutter/material.dart';
 import 'package:split_screen/split_screen.dart';
 
 MaterialApp(
-  builder: (context, child) => SplitScreen(child: child),
   home: const MyHome(),
+);
+```
+
+For custom layouts that read `MediaQuery.displayFeatures` outside `TwoPane`, the
+optional `SplitScreen` widget makes native divisions available to that subtree:
+
+```dart
+MaterialApp(
+  builder: (context, child) => SplitScreen(child: child),
+  home: const MyCustomLayout(),
 );
 ```
 
@@ -48,7 +58,10 @@ without replacing other metrics, padding, scaling, or display features. An
 engine-provided hinge or fold takes precedence over plugin folds. Resizing clears
 stale plugin geometry until a snapshot matching the new viewport arrives. Initial
 empty results are provisional; later geometry rebuilds consumers. The wrapper
-preserves child and Router state across these updates.
+preserves child and Router state across these updates. `TwoPane` uses the same
+mechanism internally. Concurrent layouts share one native observation, and nested
+layouts respect their ancestor's transformed `MediaQuery` without reinserting
+full-view geometry. Adding the optional wrapper does not duplicate observation.
 
 `MediaQuery.of(context).fold` returns the first fold. The existing `.hinge` getter
 continues to return hinge features only. Do not use either getter as a substitute
@@ -76,8 +89,8 @@ between the widget and the full-view `MediaQuery`.
 
 A zero-width vertical fold or zero-height horizontal fold can separate panes if
 it spans the viewport in the other direction and lies strictly inside the split
-axis. `TwoPane` behavior is unchanged; its earlier zero-area documentation was
-incorrect. Padding and insets are adjusted for each pane.
+axis. Padding and insets are adjusted for each pane. The visible pane's state,
+including nested navigation, survives transitions between one and two panes.
 
 ## iOS fold layout and angles
 

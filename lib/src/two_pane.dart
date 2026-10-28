@@ -7,9 +7,13 @@ import 'dart:ui' show DisplayFeature;
 
 import 'package:flutter/widgets.dart';
 
+import 'split_screen.dart';
+
 /// A widget that positions two panes side by side on uninterrupted screens or
 /// on either side of a separating [DisplayFeature] on screens interrupted by a
 /// separating [DisplayFeature].
+/// Native iOS division regions are observed automatically; no app wrapper is
+/// required. Android and other platforms use their ambient display features.
 ///
 /// A [DisplayFeature] separates the screen into sub-screens when both these
 /// conditions are met:
@@ -193,7 +197,10 @@ class TwoPane extends StatelessWidget {
       textDirection ?? Directionality.of(context);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      SplitScreen(child: Builder(builder: _buildPanes));
+
+  Widget _buildPanes(BuildContext context) {
     assert(
       textDirection != null ||
           debugCheckHasDirectionality(
@@ -259,8 +266,14 @@ class TwoPane extends StatelessWidget {
       // Only showing one pane or there is no padding to remove from pane MediaQueries
       startPaneFlex = (fractionBase * paneProportion).toInt();
       endPaneFlex = fractionBase - startPaneFlex;
-      resolvedStartPane = startPane;
-      resolvedEndPane = endPane;
+      // Keep the same ancestry when a late division changes a single-pane
+      // layout into two panes (or back), preserving unkeyed state and Navigators.
+      resolvedStartPane = mediaQuery == null
+          ? startPane
+          : MediaQuery(data: mediaQuery, child: startPane);
+      resolvedEndPane = mediaQuery == null
+          ? endPane
+          : MediaQuery(data: mediaQuery, child: endPane);
       resolvedDelimiter = const SizedBox();
     } else {
       // We are showing both panes

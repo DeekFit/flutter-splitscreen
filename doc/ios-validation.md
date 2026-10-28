@@ -457,3 +457,115 @@ warnings in those files (`stitchpal-changed-analysis.log`). Package and example
 analysis are clean. StitchPal's local dependency and source changes remain in
 the user's existing checkout for review; no app release or package publication
 was performed.
+
+## Automatic TwoPane integration — October 28 follow-up
+
+The initial integration above required an application-level `SplitScreen`
+wrapper. That requirement is superseded: `TwoPane` now observes native iOS
+division geometry internally, with its existing constructor and override rules.
+Applications using `TwoPane` need no root builder or platform checks. The example
+has had its app wrapper removed. `SplitScreen` remains optional for custom
+consumers of `MediaQuery.displayFeatures` outside `TwoPane`.
+
+Nested layouts respect an ancestor's transformed/filtered MediaQuery rather
+than reinserting the original full-view snapshot. Concurrent layouts share the
+existing lazy receiver, replay and serialized cancellation. Engine features
+still take precedence; Android and web start no native layout observation.
+No Swift, Android, angle-channel, SDK/deployment gate, or release-workflow code
+changed in this follow-up. The native XCTest result bundles above remain the
+native evidence; those fixtures were not rerun for these Dart-only changes.
+
+The new regression first failed against `f034e16` because an unwrapped TwoPane
+ignored the native division. With automatic observation enabled but the old
+single-pane branch retained, it failed again because the visible pane's nested
+Navigator was recreated. Keeping each pane's MediaQuery ancestry stable fixes
+that state loss for transitions between one and two panes.
+
+Evidence is under `build/automatic-layout-validation/`:
+
+| Check | Result / log |
+| --- | --- |
+| Package tests | 72 passed, browser-only test skipped in VM; `package-tests.log` |
+| Package analysis | No issues; `package-analysis.log` |
+| Example tests / analysis | 5 passed / no issues; `example-tests.log`, `example-analysis.log` |
+| Web, installed Edge | 1 passed, including TwoPane with iOS target override and no native calls; `web-tests.log` |
+| Native runner regression | 1 test, 8 assertions passed; `runner-tests.log` |
+| Before-fix reproductions | `before-fix.log`, `before-state-fix.log` |
+
+Seven new package regressions exercise wrapper-free late geometry, unknown
+posture without an angle sample, full division margins, zero-area seams, stale
+viewport rejection and rotation, flat removal, retained child/Navigator route
+state, concurrent replay/cancellation, nested/filtered geometry, optional wrapper
+compatibility, engine precedence, explicit overrides, Android passthrough, and
+missing-plugin fallback. The additional example regression verifies its normal
+application root needs no wrapper.
+
+The CocoaPods example was rebuilt and launched with ordinary `flutter run`,
+using the installed SDK and the existing isolated CocoaPods configuration.
+On initial launch into an already partially open Duo, without hinge movement,
+it reported capability true and 127.54 degrees. Live geometry inspection found
+the native x=455.5…495.5 division and a 455.5-point-wide first pane in the
+951 × 669 viewport. After rotation, the native division was y=455.5…495.5 and
+the first pane ended at y=455.5 in the 669 × 951 viewport. Opening flat cleared
+the feature and returned to 334.5-point columns. The supplied 180-degree and
+0-degree readings were preserved. Logs, JSON and screenshots:
+
+* `example-run-cocoapods.log`
+* `example-partial-geometry.json`, `example-rotated-geometry.json`, `example-flat-geometry.json`
+* `example-partial.png`, `example-rotated.png`
+
+The first launch without the isolated CocoaPods configuration selected Flutter's
+default SwiftPM migration and reproduced the already documented local-directory
+identity error (`flutter-splitscreen` versus `split_screen`); see
+`example-run.log`. It is diagnostic evidence, not a passing build.
+
+The updated wrapper-free example also built successfully through SwiftPM using
+the existing isolated directory named `split_screen` and the installed Flutter
+SDK (`swiftpm-build.log`). Its retained Flutter engine pod is the same packaging
+limitation described above; the plugin itself resolves through SwiftPM.
+That binary was then launched on the already partially open Duo using normal
+`flutter run --use-application-binary`, with no hinge movement. It reported true
+capability and 127.78 degrees and split at y=455.5…495.5 in the 669 × 951 viewport.
+Evidence: `swiftpm-run.log`, `swiftpm-partial-geometry.json`, and
+`swiftpm-partial.png`.
+
+The new CocoaPods binary was launched on the existing iPhone 16 Pro / iOS 18.1
+simulator with `flutter run --use-application-binary`. It showed false sensor
+capability, no angle reading, no display features, and one 402 × 874 pane.
+Evidence: `example-fallback-run.log`, `example-fallback-geometry.json`, and
+`example-fallback.png`. That simulator was returned to shutdown afterward.
+The unavailable iOS 15 runtime, ordinary-iPhone iOS 27.1 profile, and physical
+Duo/sensor-accuracy coverage remain unchanged.
+
+StitchPal's earlier app-level `SplitScreen` wrapper and iOS-specific fold branch
+have been removed. Its production integration now has no platform-specific Duo
+layout code. Its custom `allowedOverrides` now allows the library to show both
+panes on a division unless the current route explicitly requires full screen.
+The existing generic proportion and Scaffold-offset corrections remain. The
+focused layout/share suite passes 24 tests, including the same unknown-posture
+division on Android and iOS, plus a native event reaching TwoPane without a root
+wrapper (`stitchpal-focused-tests.log`).
+
+The wrapper-free StitchPal build launched successfully using `flutter run`
+(`stitchpal-run.log`). Before any hinge movement, portrait geometry was already
+split: the upper pane ended at y=455.5 and the detail Navigator began at y=495.5.
+After rotation, both pane widths were 455.5, with the detail beginning at x=495.5.
+The existing 40-point reserved division was preserved in both orientations.
+Opening flat in portrait returned to a single detail pane at (0, 138), size
+669 × 721. An unsaved `Automatic Duo draft` name survived rotation, unfolding
+to that single pane, folding again, Home/background, and resume. No pattern was
+saved and no sign-in was performed. Evidence:
+
+* `stitchpal-portrait-geometry.json`, `stitchpal-landscape-geometry.json`
+* `stitchpal-flat-geometry.json`, `stitchpal-resumed-geometry.json`
+* `stitchpal-landscape.png`, `stitchpal-resumed.png`
+
+The complete app suite finished with **1,871 passed, 13 skipped, 15 failed**
+(`stitchpal-all-tests.log`). Fourteen failures exactly match the baseline failures
+already reproduced above (`stitchpal-failure-comparison.json`). The additional
+failure was a 30-second timeout in the SQLite image-path test during overlapping
+native builds. After the builds finished, all four tests in that file passed
+with `--concurrency=1` (`stitchpal-sqlite-retry.log`). No database or unrelated
+test code was changed. Full app analysis still reports 345 issues
+(`stitchpal-analysis.log`); package/example analysis remain clean. The app
+integration changes remain uncommitted in the user's existing DeekFit checkout.

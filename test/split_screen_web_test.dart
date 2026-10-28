@@ -18,7 +18,11 @@ void main() {
             child: Builder(
               builder: (context) {
                 observed = MediaQuery.of(context);
-                return const SizedBox();
+                return const TwoPane(
+                  textDirection: TextDirection.ltr,
+                  startPane: Text('First', textDirection: TextDirection.ltr),
+                  endPane: Text('Second', textDirection: TextDirection.ltr),
+                );
               },
             ),
           ),
@@ -27,6 +31,8 @@ void main() {
       await tester.pump();
       expect(observed, same(data));
       expect(native.calls, isEmpty);
+      expect(find.text('First'), findsOneWidget);
+      expect(find.text('Second'), findsOneWidget);
       native.dispose();
     },
     skip: !kIsWeb,

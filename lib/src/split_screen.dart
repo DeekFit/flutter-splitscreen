@@ -6,6 +6,8 @@ import 'display_features.dart';
 import 'native_event_stream.dart';
 
 /// Augments the ambient MediaQuery with native iOS folds.
+/// TwoPane already does this internally. This optional wrapper is useful for
+/// custom layouts that read display features outside TwoPane.
 /// Place at the root: `builder: (_, child) => SplitScreen(child: child)`.
 /// Engine-provided hinge/fold features take precedence. Other platforms pass
 /// through unchanged. A null child never starts native observation.
@@ -24,14 +26,22 @@ class _SplitScreenState extends State<SplitScreen> {
   StreamSubscription<DisplayFeaturesSnapshot>? _subscription;
   DisplayFeaturesSnapshot? _snapshot;
   Size? _viewport;
+  bool _hasAncestor = false;
   bool get _enabled =>
       !kIsWeb &&
       defaultTargetPlatform == TargetPlatform.iOS &&
+      !_hasAncestor &&
       widget.child != null;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _hasAncestor =
+        context
+            .dependOnInheritedWidgetOfExactType<
+              _NativeDisplayFeaturesScope
+            >() !=
+        null;
     final viewport = MediaQuery.maybeOf(context)?.size;
     if (_viewport != viewport &&
         (viewport == null || !(_snapshot?.matches(viewport) ?? false))) {
@@ -121,7 +131,17 @@ class _SplitScreenState extends State<SplitScreen> {
               displayFeatures: [...data.displayFeatures, ...snapshot.features],
             )
           : data,
-      child: child,
+      child: _NativeDisplayFeaturesScope(child: child),
     );
   }
+}
+
+// Native snapshots use full-view coordinates. Descendants must respect any
+// MediaQuery transforms/removals performed by pane layouts, rather than
+// injecting the original snapshot again inside a sub-screen.
+class _NativeDisplayFeaturesScope extends InheritedWidget {
+  const _NativeDisplayFeaturesScope({required super.child});
+
+  @override
+  bool updateShouldNotify(_NativeDisplayFeaturesScope oldWidget) => false;
 }
