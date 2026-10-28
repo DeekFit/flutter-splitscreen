@@ -118,7 +118,10 @@ final class ProviderTests: XCTestCase {
         XCTAssertNil(retry.callback)
         hinge.send(nil) // An ordinary iPhone must also remain idle.
         XCTAssertNil(retry.callback)
-        view = nil
+        // Releasing UIView synchronously calls didMoveToSuperview on its
+        // children. Finish mutating the captured provider before that callback
+        // reads it, rather than triggering Swift's exclusive-access trap.
+        withExtendedLifetime(view) { view = nil }
         observation.refresh()
         XCTAssertNotNil(retry.callback)
         let cancelledRetry = retry.callback

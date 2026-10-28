@@ -5,10 +5,10 @@
 Android implementation and Microsoft-prefixed channel names remain unchanged.
 
 This `duo` branch is a **2.0.0-dev.1 development build**. Dart behavior is tested on
-Windows and Mac. Mac CocoaPods and SwiftPM builds reach native compilation but
-are blocked by the installed iOS 26.5 SDK lacking `UIHingeInteraction`.
-Native device/runtime behavior remains unverified; see the
-[Mac validation record](doc/ios-validation.md#mac-validation--october-27-2026).
+Windows and Mac. Native XCTest fixtures pass through CocoaPods and SwiftPM with
+Xcode 27.1, and the example runs on the iOS 27.1 Duo simulator. See the
+[Mac validation record](doc/ios-validation.md#mac-validation--october-28-2026)
+for tested behavior and remaining runtime/hardware coverage.
 Nothing has been tagged or published.
 
 ## Toolchains

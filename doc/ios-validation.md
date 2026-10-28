@@ -1,10 +1,10 @@
 # iOS validation checklist and Mac record
 
-Native compilation and runtime behavior are **unverified**. The October 27 Mac
-run below reaches compilation through both package managers, but the installed
-SDK does not declare `UIHingeInteraction`. A passing Dart suite is not evidence
-of Duo hardware support. Complete this checklist with a Duo-capable SDK before
-claiming native acceptance; keep command output and `.xcresult` files.
+Native fixtures pass through both package managers with the upgraded Xcode 27.1
+Duo SDK. The example also runs on the iOS 27.1 Duo simulator; see the
+[October 28 record](#mac-validation--october-28-2026). The October 27 SDK blocker
+below is historical. Fixture and simulator success do not establish physical
+sensor accuracy; keep command output and `.xcresult` files.
 Do not create a release tag or publish the package during validation.
 
 ## Prerequisites and matrix
@@ -129,7 +129,7 @@ Run `cd example && flutter run -d SIMULATOR_UDID`, or launch Runner from Xcode.
 - [ ] Test engine-provided fold/hinge precedence if the Flutter engine supplies
   those features on this simulator/runtime.
 
-## Evidence to record
+## October 27 evidence (superseded by the October 28 run below)
 
 | Check | Toolchain/runtime | Result / evidence |
 | --- | --- | --- |
@@ -275,3 +275,185 @@ before it can run on those older destinations. iOS 15 is not installed. No Duo
 simulator exists in the installed runtimes, so folding controls and supported
 poses could not be inspected. Sensor accuracy and physical readings remain
 hardware-only coverage. No package was published and no release tag was created.
+
+## Mac validation — October 28, 2026
+
+Revalidated after the host/Xcode upgrade, using the same installed Flutter SDK.
+The SDK now declares `UIHingeInteraction` and UIView reserved regions, and the
+unchanged production adapters compile. No additional Flutter SDK was installed.
+
+| Component | Actual value |
+| --- | --- |
+| Host | macOS 27.2 (`26B123`), Apple Silicon |
+| Xcode | 27.1 (`27A9275`) |
+| Swift | 6.4 (`swiftlang-6.4.0.34.1`, clang `2100.3.34.1`) |
+| iOS Simulator SDK | 27.1 (`24A94232`) |
+| Flutter / Dart | 3.47.2 stable (`d3b14c8769`) / 3.13.2 |
+| Flutter SDK | `/Volumes/EXTERNAL/flutter` |
+| Duo simulator | iOS 27.1 (`24A94425`), UDID `57E5A434-D3F4-420E-AA1C-2281959040E4` |
+| Deployment / runtime gates | iOS 15.0 / iOS 27.1, unchanged |
+
+Both commands below completed successfully, each executing all eight fixtures
+with zero failures:
+
+```sh
+ruby tool/native_tests.rb /Volumes/EXTERNAL/flutter 57E5A434-D3F4-420E-AA1C-2281959040E4 cocoapods
+ruby tool/native_tests.rb /Volumes/EXTERNAL/flutter 57E5A434-D3F4-420E-AA1C-2281959040E4 swiftpm
+```
+
+The first CocoaPods attempt found a **fixture** exclusivity crash when assigning
+`nil` to a captured view. UIView deallocation synchronously notified the anchor,
+whose callback read the same variable before its mutation finished. Retaining
+the previous view with `withExtendedLifetime` until after that assignment fixes
+the fixture while preserving the real detachment callback. The original test
+now passes in both integrations. Production observation code was not changed.
+
+| Check | Result / evidence under `build/mac-validation-2026-10-28/` |
+| --- | --- |
+| Package tests | 65 passed; browser-only test skipped in VM; `package-tests.log` |
+| Package analysis | No issues; `package-analysis.log` |
+| Example Dart checks | 4 tests passed; analysis clean; `example-tests.log`, `example-analysis.log` |
+| Runner invocation regression | 1 test, 8 assertions passed |
+| CocoaPods example build | Passed; `cocoapods-example-build.log` |
+| CocoaPods native fixtures | 8 passed; `cocoapods-native-tests.log` |
+| SwiftPM native fixtures | 8 passed; `swiftpm-native-tests.log` |
+| SwiftPM example build | Passed; `swiftpm-example-build.log`; same isolated-copy workaround as October 27 |
+
+Result bundles remain in ignored local directories:
+
+* `build/native-cocoapods-20261028-24939-1ccwwwp/CocoaPods.xcresult`
+* `build/native-swiftpm-20261028-27791-1d8zoj/SwiftPM.xcresult`
+* Initial crashing fixture: `build/native-cocoapods-20261028-19073-yjhr8/CocoaPods.xcresult`
+
+### Actual Duo example behavior
+
+Using Device Hub's **Open**, **Partially Open**, **Closed**, **Rotate Right**,
+and **Home** controls, the CocoaPods example demonstrated:
+
+* Initial attachment without moving the hinge: capability `true`, angle 180°.
+* Partially open: live angle updates and panes on opposite sides of the actual
+  active division. `example-partial.png` records the simulator output.
+* Rotation while partially open: columns become top/bottom panes along the
+  horizontal division, with no second hinge movement required.
+* Closed: the supplied 0° reading is retained and the layout returns to its
+  width-based policy when the division becomes inactive.
+* Reopen: 180° is reported again. Backgrounding with Home, resuming, and folding
+  again continues to deliver both geometry and angle updates.
+
+The eight native fixtures separately verify bounded/retryable initialization,
+late geometry after provisional empty output, a second layout pass, geometry
+conversion/margins/zero-area seams, coalescing, cancellation, pause/resume, and
+teardown. They verify no attachment retry once ready and no region queries for
+angle-only demand. These scheduling checks use injected providers, rather than
+claiming an Instruments profile or physical sensor measurements.
+
+The cached Flutter framework carried 600/700 file modes into the generated
+example bundle. Simulator installation initially reported its Info.plist as
+missing. `chmod -R a+rX` on the **generated Runner.app only** corrected those
+permissions; installation and launch then succeeded. No installed SDK files were
+edited. Simulator screenshot services could not write directly to the external
+volume, so captures were written to `/private/tmp` and copied into the ignored
+evidence directory by the shell.
+
+The SwiftPM-built example was subsequently launched with `flutter run` and
+`--use-application-binary` from the isolated copy. It initialized on an already
+partially open Duo without hinge movement (capability true, angle 127.78°),
+split along the division, reported 180° when open and 0° when closed, and
+updated its division after rotation. `example-swiftpm-partial.png` records that
+integration. As before, the plugin resolves as SwiftPM while the custom example
+Podfile retains the Flutter engine pod entry; no `split_screen` pod is present
+in the staged example's Podfile.lock.
+
+### Ordinary iPhone and older-runtime fallback
+
+The same CocoaPods example binary, compiled with the Duo SDK and deployment
+target 15.0, ran successfully on the existing iPhone 16 Pro / iOS 18.1 simulator,
+UDID `74F15225-405A-4CAA-B488-EEDD9E4EEA4D`. It displayed false capability and
+no angle reading. Live MediaQuery inspection showed no display features in the
+402 × 874 viewport, and the example rendered one pane. Evidence:
+`example-ios18-fallback.png` and `example-ios18-geometry.json` under the current
+validation directory. The simulator was returned to its original shutdown state.
+
+A non-Duo iPhone **on iOS 27.1** could not be created: `simctl create` rejected
+the iPhone 18 Pro profile with `Incompatible device` (CoreSimulator error 403).
+`runtimes.json` confirms this installed 27.1 runtime supports only the iPhone Duo
+device type. Thus the actual 27.1 ordinary-iPhone/no-hinge provider path remains
+unverified; the native injected-provider fixtures cover nil hinge readings.
+iOS 15 runtime coverage and physical Duo sensor accuracy remain unavailable.
+
+### StitchPal consumer validation
+
+StitchPal was tested in `/Volumes/EXTERNAL/src/deekfit/stitchpal`, starting from
+monorepo commit `9186dc05764e63e773eab8acb7af8307550ca8b2` on `main`. The app
+was first launched unchanged using the installed Flutter SDK:
+
+```sh
+flutter run --no-pub -d 57E5A434-D3F4-420E-AA1C-2281959040E4 --debug
+```
+
+It showed a normal width-based tablet layout, including the existing fixed
+400-point sidebar, and did not align its columns with the partially open Duo's
+division. This checkout was using the vendored `deekfit_common` TwoPane rather
+than a direct package dependency.
+
+The authorized local integration adds `split_screen` with
+`path: ../../flutter-splitscreen`, switches the three TwoPane imports, and places
+`SplitScreen(child: child)` in `MaterialApp.builder`. The home layout now permits
+division-driven pane proportions and supplies the body's full-view offset below
+the app bar and above navigation/keyboard insets. Explicit full-screen pane
+priority is retained. On native iOS, active folds can select both panes before
+an angle/posture sample; Android and web retain their previous posture policy.
+The native pod lock and plugin symlink resolve this exact local 2.0.0-dev.1.
+
+After rebuilding and launching with the same command, live Flutter VM inspection
+measured these actual coordinates (logical points):
+
+| Pose | Native active division | Actual pane boundaries |
+| --- | --- | --- |
+| Partially open landscape, viewport 951 × 669 | x=455.5…495.5, y=0…669 | Sidebar ends at x=455.5; detail begins at x=495.5; both widths 455.5 |
+| Rotated partially open portrait, viewport 669 × 951 | x=0…669, y=455.5…495.5 | Upper pane y=138…455.5; detail pane y=495.5…859 |
+
+The full 40-point reported division is preserved. Opening flat returns to the
+app's width policy. An unsaved `Duo layout draft` name in the detail form survived
+folding, unfolding to the compact single-pane view, rotation, and backgrounding
+with Home followed by resume. No pattern was saved and no account sign-in was
+performed. Geometry and screenshots are in the ignored validation directory:
+
+* `stitchpal-baseline-open.png`, `stitchpal-baseline-partial.png`
+* `stitchpal-local-partial.png`, `stitchpal-local-rotated-draft.png`
+* `stitchpal-local-partial-geometry.json`, `stitchpal-local-rotated-geometry.json`
+
+The initial Flutter run's native build took 995.8 seconds; the run after adding
+the native plugin took 1412.5 seconds. Both successfully launched. Earlier
+generic/manual build attempts were cancelled; their logs/result bundle are
+diagnostic artifacts and are not passing build evidence. Subsequent runtime
+checks used `flutter run`, including the already built binary for fallback and
+SwiftPM checks.
+
+### StitchPal regression results and pre-existing failures
+
+Three new app regressions cover late vertical/horizontal divisions, correct
+Scaffold offsets, retained Navigator state, flat fallback, and an active iOS
+division before angle initialization. Before the fix, the vertical case kept
+the sidebar at 400 instead of 490, and the horizontal case ended the upper pane
+at y=345.6 instead of 390. The focused layout/share/navigation suite now passes
+all **38 tests** (`stitchpal-focused-tests.log`).
+
+The complete app suite finished with **1,870 passed, 13 skipped, 14 failed**
+(`stitchpal-all-tests.log`). All 14 failing cases were rerun in an isolated
+`git archive` of the committed baseline source, with unchanged generated
+localizations and dependency paths, and **all 14 also failed there**. They cover
+PDF preview/cover rendering and existing text-scaling, chart-toolbar, and dialog
+expectations. Their names are in `stitchpal-failures.json`; reproduction output
+is in `stitchpal-baseline-failure-check.log` (first five) and
+`stitchpal-baseline-other-failures.log` (remaining nine). These failures were not
+changed as part of the Duo integration.
+
+Full app analysis reports 345 existing issues (`stitchpal-analysis.log`). Analysis
+of the five changed Dart files reports only three pre-existing informational
+lints: two reports for an untyped method at `home_page.dart:255`, and a super
+parameter suggestion in `stitch_pal_bootstrapper.dart`. It reports no errors or
+warnings in those files (`stitchpal-changed-analysis.log`). Package and example
+analysis are clean. StitchPal's local dependency and source changes remain in
+the user's existing checkout for review; no app release or package publication
+was performed.

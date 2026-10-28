@@ -36,10 +36,12 @@ resolved; repeat the browser check on another toolchain/host as appropriate.
 Command logs are in ignored local `build/package-tests.log`,
 `build/web-test.log`, and `build/publish-dry-run.log`. Native fixtures and their
 host generator are checked in; their compilation and execution are unverified.
-The [Mac validation record](ios-validation.md#mac-validation--october-27-2026)
-now records passing Dart checks with the installed Flutter 3.47.2, a corrected
-SwiftPM fixture scheme, and both native integrations blocked by missing Duo APIs
-in the installed iOS 26.5 SDK. No native runtime or sensor validation is claimed.
+The [Mac validation record](ios-validation.md#mac-validation--october-28-2026)
+now records eight passing native fixtures in each package manager with Xcode
+27.1, actual Duo simulator checks, ordinary-iPhone/iOS 18.1 fallback, and a
+StitchPal before/after integration comparison using installed Flutter 3.47.2.
+The October 27 missing-SDK blocker is historical. Physical sensor accuracy
+remains unverified.
 
 ## Combined review follow-up
 
