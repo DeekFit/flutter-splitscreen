@@ -1,11 +1,15 @@
-import Flutter
+// Flutter exposes legacy Objective-C sentinel globals without concurrency annotations.
+@preconcurrency import Flutter
 import UIKit
 
-public final class SplitScreenPlugin: NSObject, FlutterPlugin {
-    private var observation: DuoObservation?
-    private var channels: [FlutterEventChannel] = []
+// Flutter calls these protocol entry points on its platform (main) thread.
+// The preconcurrency conformance bridges the legacy protocol with runtime
+// actor checks. Only UIKit coordination and entry points are main-actor isolated.
+public final class SplitScreenPlugin: NSObject, @preconcurrency FlutterPlugin {
+    @MainActor private var observation: DuoObservation?
+    @MainActor private var channels: [FlutterEventChannel] = []
 
-    public static func register(with registrar: FlutterPluginRegistrar) {
+    @MainActor public static func register(with registrar: FlutterPluginRegistrar) {
         let plugin = SplitScreenPlugin()
         let methods = FlutterMethodChannel(name: "com.microsoft.flutterdualscreen/hinge_info",
                                            binaryMessenger: registrar.messenger())
@@ -30,13 +34,13 @@ public final class SplitScreenPlugin: NSObject, FlutterPlugin {
         }
     }
 
-    public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+    @MainActor public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
         guard call.method == "hasHingeAngleSensor" else { result(FlutterMethodNotImplemented); return }
         guard let observation = observation else { result(false); return }
         observation.capability { result($0) }
     }
 
-    public func detachFromEngine(for registrar: FlutterPluginRegistrar) {
+    @MainActor public func detachFromEngine(for registrar: FlutterPluginRegistrar) {
         observation?.teardown()
         observation = nil
         for channel in channels { channel.setStreamHandler(nil) }

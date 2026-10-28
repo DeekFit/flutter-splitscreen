@@ -17,22 +17,25 @@ struct HingeReading {
     }
 }
 
+@MainActor
 protocol HingeProviding: AnyObject {
-    func start(on view: UIView, update: @escaping (HingeReading?) -> Void)
+    func start(on view: UIView, update: @escaping @MainActor (HingeReading?) -> Void)
     func stop()
 }
 
+@MainActor
 protocol RegionProviding {
     func divisions(in view: UIView) -> [CGRect]
 }
 
 /// These adapters are the only code that knows about the Duo SDK.
+@MainActor
 @available(iOS 27.1, *)
 final class SystemHingeProvider: HingeProviding {
     private weak var view: UIView?
     private var interaction: UIHingeInteraction?
 
-    func start(on view: UIView, update: @escaping (HingeReading?) -> Void) {
+    func start(on view: UIView, update: @escaping @MainActor (HingeReading?) -> Void) {
         stop()
         let interaction = UIHingeInteraction { _, context in
             guard let hinge = context.hinge else { update(nil); return }
@@ -56,6 +59,7 @@ final class SystemHingeProvider: HingeProviding {
     }
 }
 
+@MainActor
 @available(iOS 27.1, *)
 struct SystemRegionProvider: RegionProviding {
     func divisions(in view: UIView) -> [CGRect] {
@@ -77,6 +81,7 @@ struct FoldSnapshot {
          }]
     }
 
+    @MainActor
     static func make(view: UIView, source: UIView, frames: [CGRect], state: String) -> FoldSnapshot? {
         let size = view.bounds.size
         guard size.width.isFinite, size.height.isFinite,

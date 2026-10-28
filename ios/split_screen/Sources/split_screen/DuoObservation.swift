@@ -2,9 +2,13 @@ import Flutter
 import UIKit
 
 /// A separate handler per channel keeps cancel/listen independent.
-final class EventTransport: NSObject, FlutterStreamHandler {
+@MainActor
+final class EventTransport: NSObject, @preconcurrency FlutterStreamHandler {
     var sink: FlutterEventSink?
-    var changed: (() -> Void)?
+    var changed: (@MainActor () -> Void)?
+    // Flutter invokes stream handlers on the platform (main) thread. The
+    // preconcurrency conformance bridges its legacy nonisolated protocol and
+    // checks the main-actor boundary in Swift 6.
     func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
         sink = events
         changed?()
@@ -17,32 +21,37 @@ final class EventTransport: NSObject, FlutterStreamHandler {
     }
 }
 
+@MainActor
 final class HierarchyObserver: UIView {
-    var changed: (() -> Void)?
+    var changed: (@MainActor () -> Void)?
     override func didMoveToWindow() { super.didMoveToWindow(); changed?() }
     override func didMoveToSuperview() { super.didMoveToSuperview(); changed?() }
     override func layoutSubviews() { super.layoutSubviews(); changed?() }
     override func safeAreaInsetsDidChange() { super.safeAreaInsetsDidChange(); changed?() }
 }
 
+@MainActor
 protocol AttachmentRetryScheduling: AnyObject {
-    func schedule(_ retry: @escaping () -> Void)
+    func schedule(_ retry: @escaping @MainActor () -> Void)
     func cancel()
 }
 
 /// Retry only while the registrar has no usable hierarchy. Ready views refresh
 /// through UIKit callbacks, so an idle subscription has no periodic work.
+@MainActor
 final class MainQueueAttachmentRetry: AttachmentRetryScheduling {
     private var work: DispatchWorkItem?
     private var generation = 0
 
-    func schedule(_ retry: @escaping () -> Void) {
+    func schedule(_ retry: @escaping @MainActor () -> Void) {
         cancel()
         let expectedGeneration = generation
         let work = DispatchWorkItem { [weak self] in
-            guard let self = self, self.generation == expectedGeneration else { return }
-            self.work = nil
-            retry()
+            MainActor.assumeIsolated {
+                guard let self = self, self.generation == expectedGeneration else { return }
+                self.work = nil
+                retry()
+            }
         }
         self.work = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: work)
@@ -56,13 +65,14 @@ final class MainQueueAttachmentRetry: AttachmentRetryScheduling {
 }
 
 /// View-scoped lifecycle coordinator; injectable providers allow XCTest fixtures.
+@MainActor
 final class DuoObservation {
     let angle = EventTransport()
     let layout = EventTransport()
-    private var viewProvider: (() -> UIView?)?
+    private var viewProvider: (@MainActor () -> UIView?)?
     private let hinge: HingeProviding
     private let regions: RegionProviding
-    private let hierarchyIsActive: (UIView) -> Bool
+    private let hierarchyIsActive: @MainActor (UIView) -> Bool
     private let attachmentRetry: AttachmentRetryScheduling
     private var observer: HierarchyObserver?
     private weak var attachedScene: UIWindowScene?
@@ -76,22 +86,22 @@ final class DuoObservation {
     private var generation = 0
     private var reading: HingeReading?
     private var initialized = false
-    private var pending: [UUID: (Bool) -> Void] = [:]
+    private var pending: [UUID: @MainActor (Bool) -> Void] = [:]
     private var timeouts: [UUID: DispatchWorkItem] = [:]
     private var previous: FoldSnapshot?
     private var notifications: [NSObjectProtocol] = []
     private var refreshing = false
     private var tornDown = false
 
-    init(view: @escaping () -> UIView?, hinge: HingeProviding, regions: RegionProviding,
-         hierarchyIsActive: @escaping (UIView) -> Bool = {
+    init(view: @escaping @MainActor () -> UIView?, hinge: HingeProviding, regions: RegionProviding,
+         hierarchyIsActive: @escaping @MainActor (UIView) -> Bool = {
              $0.window?.windowScene?.activationState == .foregroundActive
-         }, attachmentRetry: AttachmentRetryScheduling = MainQueueAttachmentRetry()) {
+         }, attachmentRetry: AttachmentRetryScheduling? = nil) {
         viewProvider = view
         self.hinge = hinge
         self.regions = regions
         self.hierarchyIsActive = hierarchyIsActive
-        self.attachmentRetry = attachmentRetry
+        self.attachmentRetry = attachmentRetry ?? MainQueueAttachmentRetry()
         angle.changed = { [weak self] in
             guard let self = self else { return }
             if let degrees = self.reading?.degrees { self.angle.sink?(degrees) }
@@ -109,21 +119,24 @@ final class DuoObservation {
             notifications.append(NotificationCenter.default.addObserver(
                 forName: name, object: nil, queue: .main) { [weak self] notification in
                 guard let scene = notification.object as? UIWindowScene else { return }
-                guard let self = self,
-                      scene === self.observer?.window?.windowScene || scene === self.attachedScene else { return }
-                self.suspended = name != UIScene.didActivateNotification
-                if name == UIScene.didDisconnectNotification { self.invalidateLayout() }
-                self.refresh()
+                // NotificationCenter's .main queue guarantees this executor.
+                MainActor.assumeIsolated {
+                    guard let self = self,
+                          scene === self.observer?.window?.windowScene || scene === self.attachedScene else { return }
+                    self.suspended = name != UIScene.didActivateNotification
+                    if name == UIScene.didDisconnectNotification { self.invalidateLayout() }
+                    self.refresh()
+                }
             })
         }
     }
 
-    func capability(_ completion: @escaping (Bool) -> Void) {
+    func capability(_ completion: @escaping @MainActor (Bool) -> Void) {
         guard !tornDown else { completion(false); return }
         let id = UUID()
         pending[id] = completion
         let timeout = DispatchWorkItem { [weak self] in
-            self?.resolve(id, value: false)
+            MainActor.assumeIsolated { self?.resolve(id, value: false) }
         }
         timeouts[id] = timeout
         DispatchQueue.main.asyncAfter(deadline: .now() + 2, execute: timeout)

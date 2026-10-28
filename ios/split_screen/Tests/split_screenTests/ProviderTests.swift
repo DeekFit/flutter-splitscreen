@@ -3,11 +3,12 @@ import UIKit
 import XCTest
 @testable import split_screen
 
+@MainActor
 private final class FixtureHinge: HingeProviding {
-    var callback: ((HingeReading?) -> Void)?
+    var callback: (@MainActor (HingeReading?) -> Void)?
     var starts = 0
     var stops = 0
-    func start(on view: UIView, update: @escaping (HingeReading?) -> Void) {
+    func start(on view: UIView, update: @escaping @MainActor (HingeReading?) -> Void) {
         starts += 1
         callback = update
     }
@@ -15,15 +16,17 @@ private final class FixtureHinge: HingeProviding {
     func send(_ reading: HingeReading?) { callback?(reading) }
 }
 
+@MainActor
 private final class FixtureRegions: RegionProviding {
     var frames: [CGRect] = []
     var queries = 0
     func divisions(in view: UIView) -> [CGRect] { queries += 1; return frames }
 }
 
+@MainActor
 private final class FixtureAttachmentRetry: AttachmentRetryScheduling {
-    var callback: (() -> Void)?
-    func schedule(_ retry: @escaping () -> Void) { callback = retry }
+    var callback: (@MainActor () -> Void)?
+    func schedule(_ retry: @escaping @MainActor () -> Void) { callback = retry }
     func cancel() { callback = nil }
     func fire() {
         let retry = callback
@@ -32,6 +35,7 @@ private final class FixtureAttachmentRetry: AttachmentRetryScheduling {
     }
 }
 
+@MainActor
 final class ProviderTests: XCTestCase {
     func testInactivityKeepsGeometryAndResumeQueriesChangedDivisions() {
         let view = UIView(frame: CGRect(x: 0, y: 0, width: 800, height: 600))
@@ -196,9 +200,11 @@ final class ProviderTests: XCTestCase {
         let token = NotificationCenter.default.addObserver(
             forName: UIScene.didActivateNotification, object: nil, queue: .main) { notification in
             guard let candidate = notification.object as? UIWindowScene else { return }
-            guard candidate !== scene, replacementScene == nil else { return }
-            replacementScene = candidate
-            activated.fulfill()
+            MainActor.assumeIsolated {
+                guard candidate !== scene, replacementScene == nil else { return }
+                replacementScene = candidate
+                activated.fulfill()
+            }
         }
         defer { NotificationCenter.default.removeObserver(token) }
         UIApplication.shared.requestSceneSessionActivation(nil, userActivity: nil, options: nil) { error in

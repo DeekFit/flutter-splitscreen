@@ -20,6 +20,7 @@
   produce empty streams.
 * Preserve valid division geometry during foreground inactivity and background
   suspension, refreshing it on resume without an intermediate empty layout.
+* Modernize UIKit coordination for Swift 6 while retaining Swift 5 builds.
 
 ## 1.0.5
 * Forked from Microsoft's dual_screen project
