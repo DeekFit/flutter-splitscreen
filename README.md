@@ -32,7 +32,7 @@ not by itself establish whether a hinge-angle sensor is available.
 
 ## Requirements
 
-* Flutter 3.38 or later and Dart 3.10 or later.
+* Flutter 2.10 or later and Dart 2.12 or later.
 * iOS deployment target 15.0 or later.
 * To build for iOS, Xcode 27.1 with the Duo SDK is required, including when the
   app runs on an older iPhone. Duo APIs are guarded at runtime for iOS 27.1+.
@@ -57,12 +57,12 @@ import 'package:split_screen/split_screen.dart';
 void main() => runApp(const MaterialApp(home: AdaptiveHome()));
 
 class AdaptiveHome extends StatelessWidget {
-  const AdaptiveHome({super.key});
+  const AdaptiveHome({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) => TwoPane(
     paneProportion: 0.35,
-    panePriority: MediaQuery.sizeOf(context).width >= 600
+    panePriority: MediaQuery.of(context).size.width >= 600
         ? TwoPanePriority.both
         : TwoPanePriority.start,
     startPane: const Scaffold(
@@ -150,14 +150,18 @@ Existing `TwoPane` constructors and `DualScreenInfo` calls are unchanged. Update
 the dependency to get automatic iPhone Duo layout support. Apps that explicitly
 restrict `allowedOverrides` continue to control their own layout policy.
 
-Version 2 requires the toolchain minimums above. Sensor errors that were
-previously swallowed are now reported, so handle errors on futures, stream
+The Dart and Flutter minimums are unchanged from 1.x. iOS builds require the
+Duo SDK; the newer SwiftPM integration requires Flutter 3.44+. Sensor errors that
+were previously swallowed are now reported, so handle errors on futures, stream
 subscriptions, and subscription cancellation.
 
 ## Example and tests
 
 Run the [example](example/) with `flutter run` on a connected device or simulator.
 It demonstrates automatic pane layout, capability detection, and live angles.
+The example's iOS scene-lifecycle integration uses Flutter 3.41+ engine APIs;
+this requirement applies to that iOS example, not to the library's Android or
+Dart code.
 
 ```sh
 flutter test

@@ -18,9 +18,9 @@ class _CounterProbeState extends State<_CounterProbe> {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-    onTap: () => setState(() => count++),
-    child: Text('Count: $count'),
-  );
+        onTap: () => setState(() => count++),
+        child: Text('Count: $count'),
+      );
 }
 
 class _ProbeRouterDelegate extends RouterDelegate<Object> with ChangeNotifier {
@@ -38,21 +38,21 @@ Map<String, Object> snapshot({
   double width = 800,
   double height = 600,
   List<Object?>? features,
-}) => {
-  'width': width,
-  'height': height,
-  'features':
-      features ??
-      [
-        <String, Object>{
-          'left': 390,
-          'top': 0,
-          'right': 410,
-          'bottom': 600,
-          'state': 'halfOpened',
-        },
-      ],
-};
+}) =>
+    {
+      'width': width,
+      'height': height,
+      'features': features ??
+          [
+            <String, Object>{
+              'left': 390,
+              'top': 0,
+              'right': 410,
+              'bottom': 600,
+              'state': 'halfOpened',
+            },
+          ],
+    };
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -150,7 +150,10 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      final router = tester.element(find.byType(Router<Object>));
+      final routerFinder = find.byWidgetPredicate(
+        (widget) => widget is Router<Object>,
+      );
+      final router = tester.element(routerFinder);
       final state = tester.state<_CounterProbeState>(
         find.byType(_CounterProbe),
       );
@@ -163,7 +166,7 @@ void main() {
         snapshot(width: size.width, height: size.height, features: []),
       );
       await tester.pump();
-      expect(tester.element(find.byType(Router<Object>)), same(router));
+      expect(tester.element(routerFinder), same(router));
       expect(
         tester.state<_CounterProbeState>(find.byType(_CounterProbe)),
         same(state),
@@ -229,11 +232,13 @@ void main() {
       )!;
       expect(result.features.first.bounds.width, 0);
       expect(result.features.last.bounds.height, 0);
-      expect(result.features.first.state, switch (state) {
-        'halfOpened' => DisplayFeatureState.postureHalfOpened,
-        'flat' => DisplayFeatureState.postureFlat,
-        _ => DisplayFeatureState.unknown,
-      });
+      expect(
+          result.features.first.state,
+          {
+            'halfOpened': DisplayFeatureState.postureHalfOpened,
+            'flat': DisplayFeatureState.postureFlat,
+            'unknown': DisplayFeatureState.unknown,
+          }[state]);
     }
   });
 
@@ -246,7 +251,9 @@ void main() {
         padding: const EdgeInsets.all(7),
         viewInsets: const EdgeInsets.only(bottom: 12),
         devicePixelRatio: 2,
-        textScaler: const TextScaler.linear(1.2),
+        // Retain compatibility with Flutter 2.10's MediaQueryData constructor.
+        // ignore: deprecated_member_use
+        textScaleFactor: 1.2,
         platformBrightness: Brightness.dark,
         displayFeatures: const [
           DisplayFeature(
@@ -294,16 +301,16 @@ void main() {
     (tester) async {
       late MediaQueryData observed;
       Widget app(Size size) => MediaQuery(
-        data: MediaQueryData(size: size),
-        child: SplitScreen(
-          child: Builder(
-            builder: (context) {
-              observed = MediaQuery.of(context);
-              return const SizedBox();
-            },
-          ),
-        ),
-      );
+            data: MediaQueryData(size: size),
+            child: SplitScreen(
+              child: Builder(
+                builder: (context) {
+                  observed = MediaQuery.of(context);
+                  return const SizedBox();
+                },
+              ),
+            ),
+          );
       await tester.pumpWidget(app(const Size(800, 600)));
       await tester.pump();
       await native.send(snapshot());
@@ -401,9 +408,9 @@ void main() {
     tester,
   ) async {
     Widget app(Widget? child) => MediaQuery(
-      data: const MediaQueryData(size: Size(800, 600)),
-      child: SplitScreen(child: child),
-    );
+          data: const MediaQueryData(size: Size(800, 600)),
+          child: SplitScreen(child: child),
+        );
     await tester.pumpWidget(app(null));
     await tester.pump();
     expect(native.calls, isEmpty);
@@ -419,16 +426,16 @@ void main() {
   ) async {
     late MediaQueryData observed;
     Widget app(Size size) => MediaQuery(
-      data: MediaQueryData(size: size),
-      child: SplitScreen(
-        child: Builder(
-          builder: (context) {
-            observed = MediaQuery.of(context);
-            return const SizedBox();
-          },
-        ),
-      ),
-    );
+          data: MediaQueryData(size: size),
+          child: SplitScreen(
+            child: Builder(
+              builder: (context) {
+                observed = MediaQuery.of(context);
+                return const SizedBox();
+              },
+            ),
+          ),
+        );
     await tester.pumpWidget(app(const Size(800, 600)));
     await tester.pump();
     expect(native.calls, ['listen']);

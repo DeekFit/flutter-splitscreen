@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'async_compat.dart';
 import 'display_features.dart';
 import 'native_event_stream.dart';
 
@@ -12,7 +13,7 @@ import 'native_event_stream.dart';
 /// Engine-provided hinge/fold features take precedence. Other platforms pass
 /// through unchanged. A null child never starts native observation.
 class SplitScreen extends StatefulWidget {
-  const SplitScreen({super.key, required this.child});
+  const SplitScreen({Key? key, required this.child}) : super(key: key);
   final Widget? child;
   @override
   State<SplitScreen> createState() => _SplitScreenState();
@@ -36,11 +37,8 @@ class _SplitScreenState extends State<SplitScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _hasAncestor =
-        context
-            .dependOnInheritedWidgetOfExactType<
-              _NativeDisplayFeaturesScope
-            >() !=
+    _hasAncestor = context.dependOnInheritedWidgetOfExactType<
+            _NativeDisplayFeaturesScope>() !=
         null;
     final viewport = MediaQuery.maybeOf(context)?.size;
     if (_viewport != viewport &&
@@ -85,7 +83,7 @@ class _SplitScreenState extends State<SplitScreen> {
     final subscription = _subscription;
     _subscription = null;
     if (subscription != null) {
-      unawaited(
+      ignoreFuture(
         subscription.cancel().catchError((Object error, StackTrace stack) {
           FlutterError.reportError(
             FlutterErrorDetails(
@@ -115,8 +113,7 @@ class _SplitScreenState extends State<SplitScreen> {
     final data = MediaQuery.maybeOf(context);
     if (!_enabled || data == null) return child;
     final snapshot = _snapshot;
-    final usePluginFeatures =
-        snapshot != null &&
+    final usePluginFeatures = snapshot != null &&
         snapshot.matches(data.size) &&
         !data.displayFeatures.any(
           (feature) =>
@@ -128,7 +125,7 @@ class _SplitScreenState extends State<SplitScreen> {
     return MediaQuery(
       data: usePluginFeatures
           ? data.copyWith(
-              displayFeatures: [...data.displayFeatures, ...snapshot.features],
+              displayFeatures: [...data.displayFeatures, ...snapshot!.features],
             )
           : data,
       child: _NativeDisplayFeaturesScope(child: child),
@@ -140,7 +137,8 @@ class _SplitScreenState extends State<SplitScreen> {
 // MediaQuery transforms/removals performed by pane layouts, rather than
 // injecting the original snapshot again inside a sub-screen.
 class _NativeDisplayFeaturesScope extends InheritedWidget {
-  const _NativeDisplayFeaturesScope({required super.child});
+  const _NativeDisplayFeaturesScope({required Widget child})
+      : super(child: child);
 
   @override
   bool updateShouldNotify(_NativeDisplayFeaturesScope oldWidget) => false;

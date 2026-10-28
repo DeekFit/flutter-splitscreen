@@ -1,3 +1,6 @@
+// Keep viewport fixtures compatible with Flutter 2.10.
+// ignore_for_file: deprecated_member_use
+
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -18,26 +21,26 @@ class _CounterState extends State<_Counter> {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-    onTap: () => setState(() => count++),
-    child: Center(child: Text('Count: $count')),
-  );
+        onTap: () => setState(() => count++),
+        child: Center(child: Text('Count: $count')),
+      );
 }
 
 Map<String, Object> _snapshot(Size size, [Rect? division]) => {
-  'width': size.width,
-  'height': size.height,
-  'features': [
-    if (division != null)
-      {
-        'left': division.left,
-        'top': division.top,
-        'right': division.right,
-        'bottom': division.bottom,
-        // An active division must work before any hinge-angle sample.
-        'state': 'unknown',
-      },
-  ],
-};
+      'width': size.width,
+      'height': size.height,
+      'features': [
+        if (division != null)
+          {
+            'left': division.left,
+            'top': division.top,
+            'right': division.right,
+            'bottom': division.bottom,
+            // An active division must work before any hinge-angle sample.
+            'state': 'unknown',
+          },
+      ],
+    };
 
 void main() {
   late NativeChannelFixture native;
@@ -47,10 +50,10 @@ void main() {
   testWidgets(
     'unwrapped TwoPane preserves a Navigator through late folds and rotation',
     (tester) async {
-      tester.view.devicePixelRatio = 1;
-      tester.view.physicalSize = const Size(500, 800);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      addTearDown(tester.view.resetPhysicalSize);
+      tester.binding.window.devicePixelRatioTestValue = 1;
+      tester.binding.window.physicalSizeTestValue = const Size(500, 800);
+      addTearDown(tester.binding.window.clearDevicePixelRatioTestValue);
+      addTearDown(tester.binding.window.clearPhysicalSizeTestValue);
       // Existing application code: no SplitScreen or platform-specific builder.
       await tester.pumpWidget(
         MaterialApp(
@@ -98,7 +101,7 @@ void main() {
       );
       expectState();
 
-      tester.view.physicalSize = const Size(800, 500);
+      tester.binding.window.physicalSizeTestValue = const Size(800, 500);
       await tester.pump();
       expect(find.byKey(const Key('end')), findsNothing);
       expectState();
@@ -131,33 +134,36 @@ void main() {
   testWidgets(
     'concurrent panes share observation, replay and do not reapply full-view folds',
     (tester) async {
-      tester.view.devicePixelRatio = 1;
-      tester.view.physicalSize = const Size(800, 600);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      addTearDown(tester.view.resetPhysicalSize);
+      tester.binding.window.devicePixelRatioTestValue = 1;
+      tester.binding.window.physicalSizeTestValue = const Size(800, 600);
+      addTearDown(tester.binding.window.clearDevicePixelRatioTestValue);
+      addTearDown(tester.binding.window.clearPhysicalSizeTestValue);
       Widget app({bool second = false}) => MaterialApp(
-        home: Stack(
-          fit: StackFit.expand,
-          children: [
-            const TwoPane(
-              startPane: TwoPane(
-                padding: EdgeInsets.only(right: 410),
-                startPane: ColoredBox(
-                  key: Key('nestedStart'),
-                  color: Colors.red,
+            home: Stack(
+              fit: StackFit.expand,
+              children: [
+                const TwoPane(
+                  startPane: TwoPane(
+                    padding: EdgeInsets.only(right: 410),
+                    startPane: ColoredBox(
+                      key: Key('nestedStart'),
+                      color: Colors.red,
+                    ),
+                    endPane:
+                        ColoredBox(key: Key('nestedEnd'), color: Colors.blue),
+                  ),
+                  endPane:
+                      ColoredBox(key: Key('outerEnd'), color: Colors.green),
                 ),
-                endPane: ColoredBox(key: Key('nestedEnd'), color: Colors.blue),
-              ),
-              endPane: ColoredBox(key: Key('outerEnd'), color: Colors.green),
+                if (second)
+                  const TwoPane(
+                    startPane: SizedBox(),
+                    endPane:
+                        ColoredBox(key: Key('replay'), color: Colors.yellow),
+                  ),
+              ],
             ),
-            if (second)
-              const TwoPane(
-                startPane: SizedBox(),
-                endPane: ColoredBox(key: Key('replay'), color: Colors.yellow),
-              ),
-          ],
-        ),
-      );
+          );
       await tester.pumpWidget(app());
       await tester.pump();
       await native.send(
@@ -199,25 +205,26 @@ void main() {
       'unwrapped TwoPane honors engine geometry and explicit overrides on $platform',
       (tester) async {
         Widget app(Set<TwoPaneAllowedOverrides> overrides) => MaterialApp(
-          home: MediaQuery(
-            data: const MediaQueryData(
-              size: Size(800, 600),
-              displayFeatures: [
-                DisplayFeature(
-                  bounds: Rect.fromLTRB(300, 0, 320, 600),
-                  type: DisplayFeatureType.hinge,
-                  state: DisplayFeatureState.unknown,
+              home: MediaQuery(
+                data: const MediaQueryData(
+                  size: Size(800, 600),
+                  displayFeatures: [
+                    DisplayFeature(
+                      bounds: Rect.fromLTRB(300, 0, 320, 600),
+                      type: DisplayFeatureType.hinge,
+                      state: DisplayFeatureState.unknown,
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: TwoPane(
-              allowedOverrides: overrides,
-              paneProportion: 0.25,
-              startPane: const SizedBox(),
-              endPane: const ColoredBox(key: Key('end'), color: Colors.blue),
-            ),
-          ),
-        );
+                child: TwoPane(
+                  allowedOverrides: overrides,
+                  paneProportion: 0.25,
+                  startPane: const SizedBox(),
+                  endPane:
+                      const ColoredBox(key: Key('end'), color: Colors.blue),
+                ),
+              ),
+            );
         await tester.pumpWidget(app(TwoPaneAllowedOverrides.values.toSet()));
         await tester.pump();
         if (platform == TargetPlatform.iOS) {
@@ -278,9 +285,7 @@ void main() {
           builder: (_, child) => SplitScreen(child: child),
           home: Builder(
             builder: (context) => MediaQuery(
-              data: MediaQuery.of(
-                context,
-              ).removeDisplayFeatures(const Rect.fromLTRB(0, 0, 390, 600)),
+              data: MediaQuery.of(context).copyWith(displayFeatures: const []),
               child: TwoPane(
                 padding: const EdgeInsets.only(right: 410),
                 startPane: Builder(

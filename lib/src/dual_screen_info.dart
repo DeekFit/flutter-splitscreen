@@ -1,6 +1,5 @@
 /// Copyright (c) Microsoft Corporation.
 /// Licensed under the MIT License.
-library;
 
 import 'package:flutter/services.dart';
 import 'native_event_stream.dart';

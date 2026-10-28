@@ -1,3 +1,6 @@
+// Keep viewport fixtures compatible with Flutter 2.10.
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -6,8 +9,10 @@ import 'package:split_screen/split_screen.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  // Binding.instance was nullable before Flutter 3.0.
   final messenger =
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      // ignore: unnecessary_non_null_assertion
+      TestDefaultBinaryMessengerBinding.instance!.defaultBinaryMessenger;
   const info = MethodChannel('com.microsoft.flutterdualscreen/hinge_info');
   const angle = MethodChannel('com.microsoft.flutterdualscreen/hinge_angle');
   const layout = MethodChannel('split_screen/display_features');
@@ -54,10 +59,10 @@ void main() {
     tester,
   ) async {
     messenger.setMockMethodCallHandler(info, (_) async => true);
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(500, 800);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    addTearDown(tester.view.resetPhysicalSize);
+    tester.binding.window.devicePixelRatioTestValue = 1;
+    tester.binding.window.physicalSizeTestValue = const Size(500, 800);
+    addTearDown(tester.binding.window.clearDevicePixelRatioTestValue);
+    addTearDown(tester.binding.window.clearPhysicalSizeTestValue);
     await tester.pumpWidget(const MyApp());
     await tester.pumpAndSettle();
     expect(find.textContaining('Second pane:'), findsNothing);
@@ -73,7 +78,7 @@ void main() {
         findsOneWidget,
       );
     }
-    tester.view.physicalSize = const Size(800, 500);
+    tester.binding.window.physicalSizeTestValue = const Size(800, 500);
     await tester.pumpAndSettle();
     expect(find.textContaining('Second pane:'), findsOneWidget);
     expect(calls, ['listen']);
@@ -91,10 +96,10 @@ void main() {
       layoutCalls.add(call.method);
       return null;
     });
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(500, 800);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    addTearDown(tester.view.resetPhysicalSize);
+    tester.binding.window.devicePixelRatioTestValue = 1;
+    tester.binding.window.physicalSizeTestValue = const Size(500, 800);
+    addTearDown(tester.binding.window.clearDevicePixelRatioTestValue);
+    addTearDown(tester.binding.window.clearPhysicalSizeTestValue);
     await tester.pumpWidget(const MyApp());
     await tester.pumpAndSettle();
     expect(find.textContaining('Second pane:'), findsNothing);

@@ -11,8 +11,9 @@
 * Share native observations, replay the latest readings to concurrent listeners,
   and stop observation after the final cancellation. Keep angle reporting
   independent of layout and preserve supplied flat and closed readings.
-* **Breaking:** Require Dart 3.10+ and Flutter 3.38+. iOS builds require Xcode
-  27.1 with the Duo SDK; SwiftPM requires Flutter 3.44+.
+* Retain the Dart 2.12+ and Flutter 2.10+ package minimums from 1.x. iOS
+  compilation requires Xcode 27.1 with the Duo SDK; the newer SwiftPM integration
+  requires Flutter 3.44+.
 * **Breaking:** Propagate operational sensor errors to callers instead of
   swallowing them. Missing plugins continue to return false capability and
   empty streams.

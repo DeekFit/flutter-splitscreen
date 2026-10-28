@@ -41,15 +41,17 @@ class DisplayFeaturesSnapshot {
           (left == right && top == bottom)) {
         return null;
       }
+      var state = DisplayFeatureState.unknown;
+      if (record['state'] == 'halfOpened') {
+        state = DisplayFeatureState.postureHalfOpened;
+      } else if (record['state'] == 'flat') {
+        state = DisplayFeatureState.postureFlat;
+      }
       features.add(
         DisplayFeature(
           bounds: Rect.fromLTRB(left, top, right, bottom),
           type: DisplayFeatureType.fold,
-          state: switch (record['state']) {
-            'halfOpened' => DisplayFeatureState.postureHalfOpened,
-            'flat' => DisplayFeatureState.postureFlat,
-            _ => DisplayFeatureState.unknown,
-          },
+          state: state,
         ),
       );
     }

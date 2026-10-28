@@ -1,15 +1,18 @@
 import 'dart:async';
 import 'package:flutter/services.dart';
+import 'async_compat.dart';
 
 /// Lazy shared Flutter event-channel receiver with serialized native lifetime.
 class NativeEventStream<T> extends Stream<T> {
   NativeEventStream(this.channel, this.decode, {BinaryMessenger? messenger})
-    : _messenger = messenger;
+      : _messenger = messenger;
   final String channel;
   final T? Function(Object?) decode;
   final BinaryMessenger? _messenger;
   BinaryMessenger get messenger =>
-      _messenger ?? ServicesBinding.instance.defaultBinaryMessenger;
+      // Binding.instance was nullable before Flutter 3.0.
+      // ignore: unnecessary_non_null_assertion
+      _messenger ?? ServicesBinding.instance!.defaultBinaryMessenger;
   static const _codec = StandardMethodCodec();
   _Observation<T>? _observation;
   Future<void>? _operations;
@@ -23,10 +26,10 @@ class NativeEventStream<T> extends Stream<T> {
     );
     final tail = result.then<void>(
       (_) {},
-      onError: (Object _, StackTrace _) {},
+      onError: (Object _error, StackTrace _stack) {},
     );
     _operations = tail;
-    unawaited(
+    ignoreFuture(
       tail.then((_) {
         if (identical(_operations, tail)) _operations = null;
       }),
@@ -48,10 +51,11 @@ class NativeEventStream<T> extends Stream<T> {
       onListen: () {
         observation = _observation ??= _Observation<T>();
         observation.listeners.add(controller);
-        if (observation.latest case final T latest) controller.add(latest);
+        final latest = observation.latest;
+        if (latest is T) controller.add(latest);
         if (!observation.scheduled) {
           observation.scheduled = true;
-          unawaited(_enqueue(() => _start(observation)));
+          ignoreFuture(_enqueue(() => _start(observation)));
         }
       },
       onCancel: () {
@@ -124,17 +128,17 @@ class NativeEventStream<T> extends Stream<T> {
     final stopped = _enqueue(() => _stop(observation));
     if (identical(_observation, observation)) _observation = null;
     observation.latest = null;
-    unawaited(
+    ignoreFuture(
       stopped.then<void>(
         (_) {
           for (final listener in observation.listeners.toList()) {
-            unawaited(listener.close());
+            ignoreFuture(listener.close());
           }
         },
         onError: (Object error, StackTrace stack) {
           for (final listener in observation.listeners.toList()) {
             listener.addError(error, stack);
-            unawaited(listener.close());
+            ignoreFuture(listener.close());
           }
         },
       ),

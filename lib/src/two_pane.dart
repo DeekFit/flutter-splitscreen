@@ -1,6 +1,5 @@
 /// Copyright (c) Microsoft Corporation.
 /// Licensed under the MIT License.
-library;
 
 import 'dart:math' as math;
 import 'dart:ui' show DisplayFeature;
@@ -72,7 +71,7 @@ import 'split_screen.dart';
 class TwoPane extends StatelessWidget {
   /// Create a layout that shows two pane widgets side by side.
   const TwoPane({
-    super.key,
+    Key? key,
     required this.startPane,
     required this.endPane,
     this.paneProportion = 0.5,
@@ -86,7 +85,7 @@ class TwoPane extends StatelessWidget {
       TwoPaneAllowedOverrides.direction,
       TwoPaneAllowedOverrides.panePriority,
     },
-  });
+  }) : super(key: key);
 
   /// The first pane.
   ///
@@ -251,9 +250,8 @@ class TwoPane extends StatelessWidget {
         displayFeatureBounds = null;
         resolvedPanePriority = panePriority;
       } else {
-        displayFeatureBounds = displayFeature.bounds
-            .intersect(position)
-            .shift(-position.topLeft);
+        displayFeatureBounds =
+            displayFeature.bounds.intersect(position).shift(-position.topLeft);
         if (allowedOverrides.contains(TwoPaneAllowedOverrides.panePriority)) {
           resolvedPanePriority = TwoPanePriority.both;
         } else {
@@ -298,8 +296,8 @@ class TwoPane extends StatelessWidget {
             }
             resolvedDelimiter = SizedBox(width: seam.size.width);
             final int leftFlex = (seam.left * fractionBase).toInt();
-            final int rightFlex = ((size.width - seam.right) * fractionBase)
-                .toInt();
+            final int rightFlex =
+                ((size.width - seam.right) * fractionBase).toInt();
             final Rect leftScreen = Offset.zero & Size(seam.left, size.height);
             final Rect rightScreen =
                 seam.topRight & Size(size.width - seam.right, size.height);
@@ -352,8 +350,8 @@ class TwoPane extends StatelessWidget {
             }
             resolvedDelimiter = SizedBox(height: seam.size.height);
             final int topPane = (seam.top * fractionBase).toInt();
-            final int bottomPane = ((size.height - seam.bottom) * fractionBase)
-                .toInt();
+            final int bottomPane =
+                ((size.height - seam.bottom) * fractionBase).toInt();
             final Rect topScreen = Offset.zero & Size(size.width, seam.top);
             final Rect bottomScreen =
                 seam.bottomLeft & Size(size.width, size.height - seam.bottom);

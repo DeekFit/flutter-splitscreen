@@ -8,8 +8,10 @@ import 'native_channel_fixture.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   const info = MethodChannel('com.microsoft.flutterdualscreen/hinge_info');
+  // Binding.instance was nullable before Flutter 3.0.
   final messenger =
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      // ignore: unnecessary_non_null_assertion
+      TestDefaultBinaryMessengerBinding.instance!.defaultBinaryMessenger;
   late NativeChannelFixture native;
   late NativeEventStream<double> stream;
   setUp(() {
@@ -164,8 +166,8 @@ void main() {
   );
   test('reconnection waits for old native cancellation', () async {
     final cancelling = Completer<Object?>();
-    native.handler = (call) async =>
-        call.method == 'cancel' ? cancelling.future : null;
+    native.handler =
+        (call) async => call.method == 'cancel' ? cancelling.future : null;
     final first = stream.listen((_) {});
     await flushChannels();
     final cancelled = first.cancel();
@@ -185,8 +187,8 @@ void main() {
     'cancellation during activation serializes teardown and next listen',
     () async {
       final activating = Completer<Object?>();
-      native.handler = (call) async =>
-          call.method == 'listen' ? activating.future : null;
+      native.handler =
+          (call) async => call.method == 'listen' ? activating.future : null;
       final first = stream.listen((_) {});
       await flushChannels();
       final cancelled = first.cancel();
@@ -236,8 +238,8 @@ void main() {
     'completion queues cleanup before an immediate replacement listener',
     () async {
       final barrier = Completer<Object?>();
-      native.handler = (call) async =>
-          call.method == 'cancel' ? barrier.future : null;
+      native.handler =
+          (call) async => call.method == 'cancel' ? barrier.future : null;
       final first = stream.listen((_) {});
       await flushChannels();
       await native.end();

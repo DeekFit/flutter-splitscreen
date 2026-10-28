@@ -10,8 +10,10 @@ class NativeChannelFixture {
     });
   }
   final String name;
+  // Binding.instance was nullable before Flutter 3.0.
   final messenger =
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      // ignore: unnecessary_non_null_assertion
+      TestDefaultBinaryMessengerBinding.instance!.defaultBinaryMessenger;
   final calls = <String>[];
   Future<Object?> Function(MethodCall)? handler;
   static const codec = StandardMethodCodec();
