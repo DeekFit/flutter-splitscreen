@@ -1,0 +1,17 @@
+analyzer:
+  exclude:
+    - build/**
+    - android/**
+    - ios/**
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+
+linter:
+  rules:
+    - avoid_empty_else
+    - avoid_print
+    - empty_catches
+    - hash_and_equals
+    - valid_regexps

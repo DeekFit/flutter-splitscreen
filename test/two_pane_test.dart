@@ -49,7 +49,7 @@ void main() {
     const Key pane1Key = Key('pane1');
     const Key pane2Key = Key('pane2');
     // A 20 pixel-wide vertical display feature splitting the display left-right
-    final MediaQueryData mediaQuery = MediaQueryData.fromWindow(WidgetsBinding.instance.window).copyWith(
+    final MediaQueryData mediaQuery = const MediaQueryData(size: Size(800, 600)).copyWith(
         displayFeatures: <DisplayFeature>[
           const DisplayFeature(
             bounds: Rect.fromLTRB(390, 0, 410, 600),
@@ -106,7 +106,7 @@ void main() {
     const Key pane1Key = Key('pane1');
     const Key pane2Key = Key('pane2');
     // A 20 pixel-wide vertical display feature splitting the display left-right
-    final MediaQueryData mediaQuery = MediaQueryData.fromWindow(WidgetsBinding.instance.window).copyWith(
+    final MediaQueryData mediaQuery = const MediaQueryData(size: Size(800, 600)).copyWith(
         displayFeatures: <DisplayFeature>[
           const DisplayFeature(
             bounds: Rect.fromLTRB(390, 0, 410, 600),
@@ -164,7 +164,7 @@ void main() {
     const Key pane1Key = Key('pane1');
     const Key pane2Key = Key('pane2');
     // A 20 pixel-wide vertical display feature splitting the display left-right
-    final MediaQueryData mediaQuery = MediaQueryData.fromWindow(WidgetsBinding.instance.window).copyWith(
+    final MediaQueryData mediaQuery = const MediaQueryData(size: Size(800, 600)).copyWith(
         displayFeatures: <DisplayFeature>[
           const DisplayFeature(
             bounds: Rect.fromLTRB(390, 0, 410, 600),
@@ -222,7 +222,7 @@ void main() {
     const Key pane1Key = Key('pane1');
     const Key pane2Key = Key('pane2');
     // A 20 pixel-wide vertical display feature splitting the display left-right
-    final MediaQueryData mediaQuery = MediaQueryData.fromWindow(WidgetsBinding.instance.window).copyWith(
+    final MediaQueryData mediaQuery = const MediaQueryData(size: Size(800, 600)).copyWith(
         displayFeatures: <DisplayFeature>[
           const DisplayFeature(
             bounds: Rect.fromLTRB(390, 0, 410, 600),
@@ -280,7 +280,7 @@ void main() {
     const Key pane1Key = Key('pane1');
     const Key pane2Key = Key('pane2');
     // A 20 pixel-wide vertical display feature splitting the display left-right
-    final MediaQueryData mediaQuery = MediaQueryData.fromWindow(WidgetsBinding.instance.window).copyWith(
+    final MediaQueryData mediaQuery = const MediaQueryData(size: Size(800, 600)).copyWith(
         displayFeatures: <DisplayFeature>[
           const DisplayFeature(
             bounds: Rect.fromLTRB(390, 0, 410, 600),
@@ -338,7 +338,7 @@ void main() {
     const Key pane1Key = Key('pane1');
     const Key pane2Key = Key('pane2');
     // A 20 pixel-wide vertical display feature splitting the display left-right
-    final MediaQueryData mediaQuery = MediaQueryData.fromWindow(WidgetsBinding.instance.window).copyWith(
+    final MediaQueryData mediaQuery = const MediaQueryData(size: Size(800, 600)).copyWith(
         displayFeatures: <DisplayFeature>[
           const DisplayFeature(
             bounds: Rect.fromLTRB(390, 0, 410, 600),
@@ -391,7 +391,7 @@ void main() {
     const Key pane1Key = Key('pane1');
     const Key pane2Key = Key('pane2');
     // A 20 pixel-wide vertical display feature splitting the display left-right
-    final MediaQueryData mediaQuery = MediaQueryData.fromWindow(WidgetsBinding.instance.window).copyWith(
+    final MediaQueryData mediaQuery = const MediaQueryData(size: Size(800, 600)).copyWith(
         displayFeatures: <DisplayFeature>[
           const DisplayFeature(
             bounds: Rect.fromLTRB(390, 0, 410, 600),
@@ -449,7 +449,7 @@ void main() {
     const Key pane1Key = Key('pane1');
     const Key pane2Key = Key('pane2');
     // A 600 pixel-wide notch at the top of the screen, does not affect TwoPane
-    final MediaQueryData mediaQuery = MediaQueryData.fromWindow(WidgetsBinding.instance.window).copyWith(
+    final MediaQueryData mediaQuery = const MediaQueryData(size: Size(800, 600)).copyWith(
         displayFeatures: <DisplayFeature>[
           const DisplayFeature(
             bounds: Rect.fromLTRB(100, 0, 700, 100),
@@ -621,7 +621,7 @@ void main() {
     OrderPainter.log.clear();
     const Key twoPaneKey = Key('twoPane');
     // A 20 pixel-wide vertical display feature splitting the display left-right
-    final MediaQueryData mediaQuery = MediaQueryData.fromWindow(WidgetsBinding.instance.window).copyWith(
+    final MediaQueryData mediaQuery = const MediaQueryData(size: Size(800, 600)).copyWith(
       padding: const EdgeInsets.all(10),
       viewPadding: const EdgeInsets.all(10),
       viewInsets: const EdgeInsets.all(10),
@@ -665,7 +665,7 @@ void main() {
     const Key pane1Key = Key('pane1');
     const Key pane2Key = Key('pane2');
     // A 20 pixel-wide vertical display feature splitting the display left-right
-    final MediaQueryData mediaQuery = MediaQueryData.fromWindow(WidgetsBinding.instance.window).copyWith(
+    final MediaQueryData mediaQuery = const MediaQueryData(size: Size(800, 600)).copyWith(
         displayFeatures: <DisplayFeature>[
           const DisplayFeature(
             bounds: Rect.fromLTRB(390, 0, 410, 600),
@@ -719,7 +719,7 @@ void main() {
     const Key pane1Key = Key('pane1');
     const Key pane2Key = Key('pane2');
     // A 20 pixel-wide vertical display feature splitting the display left-right
-    final MediaQueryData mediaQuery = MediaQueryData.fromWindow(WidgetsBinding.instance.window).copyWith(
+    final MediaQueryData mediaQuery = const MediaQueryData(size: Size(800, 600)).copyWith(
       displayFeatures: <DisplayFeature>[
         const DisplayFeature(
           bounds: Rect.fromLTRB(390, 0, 410, 600),
@@ -897,7 +897,7 @@ void main() {
     OrderPainter.log.clear();
     const Key twoPaneKey = Key('twoPane');
     // A 20 pixel-wide vertical display feature splitting the display left-right
-    final MediaQueryData mediaQuery = MediaQueryData.fromWindow(WidgetsBinding.instance.window).copyWith(
+    final MediaQueryData mediaQuery = const MediaQueryData(size: Size(800, 600)).copyWith(
       padding: const EdgeInsets.all(10),
       viewPadding: const EdgeInsets.all(10),
       viewInsets: const EdgeInsets.all(10),
@@ -941,7 +941,7 @@ void main() {
     const Key pane1Key = Key('pane1');
     const Key pane2Key = Key('pane2');
     // A 20 pixel-wide vertical display feature splitting the display left-right
-    final MediaQueryData mediaQuery = MediaQueryData.fromWindow(WidgetsBinding.instance.window).copyWith(
+    final MediaQueryData mediaQuery = const MediaQueryData(size: Size(800, 600)).copyWith(
         displayFeatures: <DisplayFeature>[
           const DisplayFeature(
             bounds: Rect.fromLTRB(390, 0, 410, 600),
@@ -995,7 +995,7 @@ void main() {
     const Key pane1Key = Key('pane1');
     const Key pane2Key = Key('pane2');
     // A 20 pixel-wide vertical display feature splitting the display left-right
-    final MediaQueryData mediaQuery = MediaQueryData.fromWindow(WidgetsBinding.instance.window).copyWith(
+    final MediaQueryData mediaQuery = const MediaQueryData(size: Size(800, 600)).copyWith(
       displayFeatures: <DisplayFeature>[
         const DisplayFeature(
           bounds: Rect.fromLTRB(390, 0, 410, 600),
@@ -1133,7 +1133,7 @@ void main() {
     OrderPainter.log.clear();
     const Key twoPaneKey = Key('twoPane');
     // A 20 pixel-wide vertical display feature splitting the display left-right
-    final MediaQueryData mediaQuery = MediaQueryData.fromWindow(WidgetsBinding.instance.window).copyWith(
+    final MediaQueryData mediaQuery = const MediaQueryData(size: Size(800, 600)).copyWith(
       padding: const EdgeInsets.all(10),
       viewPadding: const EdgeInsets.all(10),
       viewInsets: const EdgeInsets.all(10),
@@ -1178,7 +1178,7 @@ void main() {
     const Key pane1Key = Key('pane1');
     const Key pane2Key = Key('pane2');
     // A 20 pixel-wide horizontal display feature splitting the display up-down
-    final MediaQueryData mediaQuery = MediaQueryData.fromWindow(WidgetsBinding.instance.window).copyWith(
+    final MediaQueryData mediaQuery = const MediaQueryData(size: Size(800, 600)).copyWith(
         displayFeatures: <DisplayFeature>[
           const DisplayFeature(
             bounds: Rect.fromLTRB(0, 290, 800, 310),
@@ -1233,7 +1233,7 @@ void main() {
     const Key pane1Key = Key('pane1');
     const Key pane2Key = Key('pane2');
     // A 20 pixel-wide horizontal display feature splitting the display up-down
-    final MediaQueryData mediaQuery = MediaQueryData.fromWindow(WidgetsBinding.instance.window).copyWith(
+    final MediaQueryData mediaQuery = const MediaQueryData(size: Size(800, 600)).copyWith(
         displayFeatures: <DisplayFeature>[
           const DisplayFeature(
             bounds: Rect.fromLTRB(0, 290, 800, 310),
@@ -1375,7 +1375,7 @@ void main() {
     OrderPainter.log.clear();
     const Key twoPaneKey = Key('twoPane');
     // A 20 pixel-wide vertical display feature splitting the display left-right
-    final MediaQueryData mediaQuery = MediaQueryData.fromWindow(WidgetsBinding.instance.window).copyWith(
+    final MediaQueryData mediaQuery = const MediaQueryData(size: Size(800, 600)).copyWith(
       padding: const EdgeInsets.all(10),
       viewPadding: const EdgeInsets.all(10),
       viewInsets: const EdgeInsets.all(10),
@@ -1421,7 +1421,7 @@ void main() {
     const Key pane1Key = Key('pane1');
     const Key pane2Key = Key('pane2');
     // A 20 pixel-wide horizontal display feature splitting the display up-down
-    final MediaQueryData mediaQuery = MediaQueryData.fromWindow(WidgetsBinding.instance.window).copyWith(
+    final MediaQueryData mediaQuery = const MediaQueryData(size: Size(800, 600)).copyWith(
         displayFeatures: <DisplayFeature>[
           const DisplayFeature(
             bounds: Rect.fromLTRB(0, 290, 800, 310),
@@ -1476,7 +1476,7 @@ void main() {
     const Key pane1Key = Key('pane1');
     const Key pane2Key = Key('pane2');
     // A 20 pixel-wide horizontal display feature splitting the display up-down
-    final MediaQueryData mediaQuery = MediaQueryData.fromWindow(WidgetsBinding.instance.window).copyWith(
+    final MediaQueryData mediaQuery = const MediaQueryData(size: Size(800, 600)).copyWith(
         displayFeatures: <DisplayFeature>[
           const DisplayFeature(
             bounds: Rect.fromLTRB(0, 290, 800, 310),

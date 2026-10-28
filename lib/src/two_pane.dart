@@ -6,16 +6,19 @@ import 'dart:ui' show DisplayFeature;
 
 import 'package:flutter/widgets.dart';
 
+import 'split_screen.dart';
+
 /// A widget that positions two panes side by side on uninterrupted screens or
 /// on either side of a separating [DisplayFeature] on screens interrupted by a
 /// separating [DisplayFeature].
+/// Native iOS division regions are observed automatically; no app wrapper is
+/// required. Android and other platforms use their ambient display features.
 ///
 /// A [DisplayFeature] separates the screen into sub-screens when both these
 /// conditions are met:
 ///
-///   * it obstructs the screen, meaning the area it occupies is not 0. Display
-///     features of type [DisplayFeatureType.fold] can have height 0 or width 0
-///     and not be obstructing the screen.
+///   * its bounds lie strictly inside the screen along the split axis. A fold
+///     with zero width or height can also separate the panes.
 ///   * it is at least as tall as the screen, producing a left and right
 ///     sub-screen or it is at least as wide as the screen, producing a top and
 ///     bottom sub-screen.
@@ -193,7 +196,10 @@ class TwoPane extends StatelessWidget {
       textDirection ?? Directionality.of(context);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      SplitScreen(child: Builder(builder: _buildPanes));
+
+  Widget _buildPanes(BuildContext context) {
     assert(textDirection != null ||
         debugCheckHasDirectionality(
           context,
@@ -254,8 +260,14 @@ class TwoPane extends StatelessWidget {
       // Only showing one pane or there is no padding to remove from pane MediaQueries
       startPaneFlex = (fractionBase * paneProportion).toInt();
       endPaneFlex = fractionBase - startPaneFlex;
-      resolvedStartPane = startPane;
-      resolvedEndPane = endPane;
+      // Keep the same ancestry when a late division changes a single-pane
+      // layout into two panes (or back), preserving unkeyed state and Navigators.
+      resolvedStartPane = mediaQuery == null
+          ? startPane
+          : MediaQuery(data: mediaQuery, child: startPane);
+      resolvedEndPane = mediaQuery == null
+          ? endPane
+          : MediaQuery(data: mediaQuery, child: endPane);
       resolvedDelimiter = const SizedBox();
     } else {
       // We are showing both panes
@@ -503,9 +515,8 @@ class TwoPane extends StatelessWidget {
   /// A [DisplayFeature] separates the screen into sub-screens when both these
   /// conditions are met:
   ///
-  ///   * it obstructs the screen, meaning the area it occupies is not 0. Display
-  ///     features of type [DisplayFeatureType.fold] can have height 0 or width 0
-  ///     and not be obstructing the screen.
+  ///   * its bounds lie strictly inside the screen along the split axis. A fold
+  ///     with zero width or height can also separate the panes.
   ///   * it is at least as tall as the screen, producing a left and right
   ///     sub-screen or it is at least as wide as the screen, producing a top and
   ///     bottom sub-screen.

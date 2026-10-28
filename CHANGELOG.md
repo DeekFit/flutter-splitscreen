@@ -1,3 +1,27 @@
+## 2.0.0
+
+* Add iPhone Duo layout and hinge-angle support on iOS 27.1+, with an iOS 15
+  deployment target and fallback on ordinary iPhones and older runtimes.
+* Automatically align existing `TwoPane` layouts with active Duo divisions;
+  no application-level wrapper is required. Preserve visible pane and nested
+  Navigator state through geometry and single-pane/two-pane transitions.
+* Add the optional `SplitScreen` wrapper for custom MediaQuery consumers and
+  the `.fold` getter alongside the existing `.hinge` getter.
+* Support iOS integration through CocoaPods and Swift Package Manager.
+* Share native observations, replay the latest readings to concurrent listeners,
+  and stop observation after the final cancellation. Keep angle reporting
+  independent of layout and preserve supplied flat and closed readings.
+* Retain the Dart 2.12+ and Flutter 2.10+ package minimums from 1.x. iOS
+  compilation requires Xcode 27.1 with the Duo SDK; the newer SwiftPM integration
+  requires Flutter 3.44+.
+* Preserve nonthrowing capability queries: `hasHingeAngleSensor` returns false
+  on query failures, including missing plugins. Angle-stream operational errors
+  remain asynchronous stream or cancellation-future errors; missing plugins
+  produce empty streams.
+* Preserve valid division geometry during foreground inactivity and background
+  suspension, refreshing it on resume without an intermediate empty layout.
+* Modernize UIKit coordination for Swift 6 while retaining Swift 5 builds.
+
 ## 1.0.5
 * Forked from Microsoft's dual_screen project
 * Updated to latest Android, AGP, and Kotlin versions to support newer versions of Flutter

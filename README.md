@@ -3,24 +3,61 @@
 **note**
 This project has been forked from the Microsoft DualScreen project in order to keep it up to date with the latest Flutter / Android requirements. The information below is otherwise unchanged, unless necessary.
 
-This contains Microsoft's offerings to streamline foldable and dual-screen development using Flutter. This plugin will work on any platform, but only Android actually has foldable and dual screen devices.
+This contains Microsoft's offerings to streamline foldable and dual-screen development using Flutter. This fork adds native iPhone Duo support alongside Android. The layout widgets also work on ordinary phones, tablets, desktops, and web.
 
 Flutter already has support for foldable and dual-screen devices in the form of [MediaQuery Display Features](https://docs.microsoft.com/en-us/dual-screen/flutter/mediaquery). In addition to that, this plugin offers:
 
 - The [TwoPane widget](#twopane-widget), which relies on display features coming from MediaQuery.
 - Access to the [hinge angle sensor data](#hinge-angle-sensor), which for performance concerns, was not included in MediaQuery.
+- Automatic iPhone Duo division-region support in `TwoPane`, without an application-level wrapper or platform checks.
+
+## Installation and requirements
+
+```yaml
+dependencies:
+  split_screen: ^2.0.0
+```
+
+Run `flutter pub get`, then import `package:split_screen/split_screen.dart`.
+The package retains its Dart 2.12+ and Flutter 2.10+ minimums.
+
+| Platform | Layout and sensor support |
+| --- | --- |
+| Android | Uses Flutter's hinge/fold display features; angle readings require a device hinge sensor |
+| iPhone Duo, iOS 27.1+ | Automatically uses active division regions and supports native hinge-angle readings |
+| Other iPhones, iOS 15+ | Normal layout policy, with no Duo readings |
+| Web, Windows, macOS, Linux | Layout widgets and supplied display features; no native angle-sensor integration |
+
+Building for iOS requires Xcode 27.1 with the Duo SDK and a deployment target of
+iOS 15 or later. Duo APIs are guarded at runtime for iOS 27.1+. Every iOS host
+built with Xcode 27 must adopt the UIScene lifecycle. Flutter 3.41+ automatically
+migrates eligible hosts; custom AppDelegates and older Flutter hosts require
+manual migration using Flutter's official
+[UIScene migration guide](https://docs.flutter.dev/release/breaking-changes/uiscenedelegate).
+This is a host integration requirement, separate from the package-wide Dart,
+Flutter, and Android minimums. CocoaPods and
+Swift Package Manager are supported; the newer SwiftPM integration requires
+Flutter 3.44+. These iOS requirements do not apply to Android or web builds.
+iOS support has been tested in simulators; physical-device sensor accuracy has
+not been verified.
 
 # TwoPane Widget
 
 This layout has two child panes, which can be shown side-by-side, above-and-below, or a single pane can be prioritized. The relative size of the two pane widgets can be adjusted proportionally; and on dual-screen devices the boundary snaps to the hinge area.
+
+On iPhone Duo, existing `TwoPane` calls automatically align with active division
+regions, including their full reported margins. A horizontal division produces
+top/bottom panes. With no separating feature, the widget follows the app's normal
+width and pane-priority policy. Layout does not depend on an angle reading, and
+visible pane and Navigator state survive geometry changes.
 
 ## TwoPane API
 
 ```dart
 class TwoPane {
   const TwoPane({
-    Widget startPane,
-    Widget endPane,
+    required Widget startPane,
+    required Widget endPane,
     double paneProportion,
     TwoPanePriority panePriority,
     Axis direction,
@@ -46,6 +83,13 @@ Properties of TwoPane:
 
 > Most of the parameters provided to TwoPane are ignored when the device has a hinge. This means that you can focus on how the layout works on large screens like tablets and desktops, while also having it adapt well to the dual-screen form factor by default.
 
+The same override rules apply to separating folds, including zero-width or
+zero-height seams. Explicitly limiting `allowedOverrides` retains the app's
+chosen policy; disabling proportion overrides also disables alignment to the
+feature's full bounds. If `TwoPane` sits below an app bar or inside other insets,
+use `padding` to provide its offset from the full-view `MediaQuery` bounds on
+all platforms.
+
 ## TwoPane example
 
 ```dart
@@ -54,12 +98,14 @@ Widget build(BuildContext context) {
     startPane: _widgetA(),
     endPane: _widgetB(),
     paneProportion: 0.3,
-    panePriority: MediaQuery.of(context).size.width > 500 ? TwoPanePriority.both :TwoPanePriority.pane1,
+    panePriority: MediaQuery.of(context).size.width > 500 ? TwoPanePriority.both : TwoPanePriority.start,
   );
 }
 ```
 
 This sample code produces the results at the beginning of this article:
+
+- On **iPhone Duo**, an active separating division places widget A and widget B on opposite sides of the division.
 
 - On **Surface Duo**, widget A and widget B both take one screen.
   ![Flutter TwoPaneView on Surface Duo](https://github.com/microsoft/flutter-dualscreen/blob/main/images/twopaneview-surfaceduo-simple.png)
@@ -68,9 +114,56 @@ This sample code produces the results at the beginning of this article:
 - On a **small phone** which is less than 500 logical pixels wide, only widget A is visible.
   ![Flutter TwoPaneView on a candybar phone](https://github.com/microsoft/flutter-dualscreen/blob/main/images/twopaneview-phone-simple.png)
 
+## Custom display-feature layouts
+
+`TwoPane` handles native Duo geometry internally. If your own widgets read
+`MediaQuery.displayFeatures` outside `TwoPane`, use the optional `SplitScreen`
+wrapper at the app root to expose Duo divisions to that subtree. A `TwoPane`
+can only update MediaQuery for its descendants; it cannot update an ancestor
+or a sibling custom layout:
+
+```dart
+MaterialApp(
+  builder: (context, child) => SplitScreen(child: child),
+  home: const MyCustomLayout(),
+);
+```
+
+It preserves other MediaQuery metrics and gives engine-provided hinges and
+folds precedence. Nested layouts respect their ancestor's transformed or
+filtered display features. `MediaQuery.of(context).hinge` still returns physical
+hinges only; existing `.hinge` checks do not detect continuous-screen folds.
+Duo divisions use `DisplayFeatureType.fold`, and the new `.fold` getter returns
+the first fold feature. A custom layout can handle both types explicitly:
+
+```dart
+class MyCustomLayout extends StatelessWidget {
+  const MyCustomLayout({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final divisions = MediaQuery.of(context).displayFeatures.where(
+      (feature) => feature.type == DisplayFeatureType.fold ||
+          feature.type == DisplayFeatureType.hinge,
+    );
+    return Stack(children: [
+      const Center(child: Text('Custom content')),
+      for (final feature in divisions)
+        Positioned.fromRect(
+          rect: feature.bounds,
+          child: const ColoredBox(color: Color(0xFF808080)),
+        ),
+    ]);
+  }
+}
+```
+
+This example marks reported feature bounds; a pane layout should also check
+whether each feature spans its viewport before treating it as a separator.
+
 # Hinge angle sensor
 
-Foldable and dual-screen devices have a hinge between the two moving parts of the screen. This hinge has a sensor, reporting the angle between the parts of the screen. For example, when these parts lay flat to form a continuous surface, the hinge angle reports a 180 deg angle.
+Foldable and dual-screen devices have a hinge between the two moving parts of the screen. Some devices expose a sensor reporting the angle between the parts of the screen. For example, when these parts lay flat to form a continuous surface, the hinge angle reports a 180 deg angle.
 
 > The hinge angle is used to determine the [device posture](https://developer.android.com/guide/topics/ui/foldables#postures). If you're looking to write code that depends on the device posture, we recommend using the functionality provided by [MediaQuery Display Features](https://docs.microsoft.com/en-us/dual-screen/flutter/mediaquery) instead.
 
@@ -83,29 +176,58 @@ This will allow you to import DualScreenInfo `import 'package:split_screen/split
 DualScreenInfo exposes 2 static properties:
 
 - `hingeAngleEvents`: Broadcast stream of events from the device hinge angle sensor. If the device is not equipped with a hinge angle sensor, the stream produces no events.
-- `hasHingeAngleSensor`: Future returning true if the device has a hinge angle sensor. Alternatively, if your app already uses `MediaQuery.displayFeatures` or `MediaQuery.hinge` to adapt to foldable or dual-screen form factors, you can safely assume the hinge angle sensor exists and that `hingeAngleEvents` produces usable values.
+- `hasHingeAngleSensor`: Future returning true if the device has a hinge angle sensor. Do not infer sensor availability from `MediaQuery.displayFeatures` or `MediaQuery.hinge`; layout and angle reporting are independent.
+
+Angle observation is lazy and shared. New concurrent listeners receive the
+latest reading, and native observation stops after the final cancellation.
+Supplied flat and closed readings are retained without clamping Android angles
+to an iPhone-specific range. Missing plugins return false capability and empty
+streams. Capability-query failures return false. Angle-stream operational
+errors reach the stream listener or cancellation future. On iOS, capability initialization can wait up to two seconds
+for attachment and can be queried again if the view was initially unavailable.
 
 ## Hinge angle example
 
 ```dart
 import 'package:split_screen/split_screen.dart';
 
-DualScreenInfo.hingeAngleEvents.listen((double hingeAngle) {
+final subscription = DualScreenInfo.hingeAngleEvents.listen((double hingeAngle) {
   print(hingeAngle);
+}, onError: (Object error) {
+  print(error);
 });
 
 DualScreenInfo.hasHingeAngleSensor.then((bool hasHingeSensor) {
   print(hasHingeSensor);
 });
+
+// When the consumer is disposed, call: await subscription.cancel();
 ```
 
 ## Testing
 
 Examples on how to mock the hinge angle or display features can be found in the [test](https://github.com/microsoft/flutter-dualscreen/tree/main/test) folder.
 
-Testing the hinge angle sensor functionality can be done using the [Surface Duo emulator](https://docs.microsoft.com/en-us/dual-screen/android/emulator/get-started) or one of the [foldable emulators available in Android Studio](https://developer.android.com/guide/topics/ui/foldables#emulators). Both emulators provide a hinge angle virtual sensor. The Surface Duo emulator is the only one with two separate screens.
+Testing the hinge angle sensor functionality can be done using the [Surface Duo emulator](https://docs.microsoft.com/en-us/dual-screen/android/emulator/get-started) or one of the [foldable emulators available in Android Studio](https://developer.android.com/guide/topics/ui/foldables#emulators). Both emulators provide a hinge angle virtual sensor. The Surface Duo emulator provides two separate screens.
 
 ![Surface Duo Emulator Hinge Sensor](https://github.com/microsoft/flutter-dualscreen/blob/main/images/emulator_hinge_angle.jpg)
+
+For iOS, run the [example](example/) on an iPhone Duo simulator with iOS 27.1+.
+The example's iOS scene-lifecycle integration uses Flutter 3.41+ engine APIs;
+that requirement applies to the iOS example rather than the library's Dart or
+Android code. Use `flutter run -d SIMULATOR_UDID` from the example directory.
+
+Package tests and native XCTest fixtures can be run with:
+
+```sh
+flutter test
+flutter analyze
+ruby tool/native_tests.rb FLUTTER_SDK_PATH SIMULATOR_UDID cocoapods
+ruby tool/native_tests.rb FLUTTER_SDK_PATH SIMULATOR_UDID swiftpm
+```
+
+The native fixture runner uses an installed Flutter SDK and requires CocoaPods
+and the `xcodeproj` Ruby gem for the CocoaPods path.
 
 ## Contributing
 
@@ -123,8 +245,8 @@ contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additio
 
 ## Trademarks
 
-This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft 
-trademarks or logos is subject to and must follow 
+This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft
+trademarks or logos is subject to and must follow
 [Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general).
 Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship.
 Any use of third-party trademarks or logos are subject to those third-party's policies.

@@ -1,60 +1,65 @@
-/// Copyright (c) Microsoft Corporation.
-/// Licensed under the MIT License.
-
 import 'package:flutter/material.dart';
 import 'package:split_screen/split_screen.dart';
 
-void main() {
-  runApp(MyApp());
+void main() => runApp(const MyApp());
+
+class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
+  @override
+  Widget build(BuildContext context) => MaterialApp(home: const SensorDemo());
 }
 
-class MyApp extends StatefulWidget {
+class SensorDemo extends StatefulWidget {
+  const SensorDemo({Key? key}) : super(key: key);
   @override
-  _MyAppState createState() => _MyAppState();
+  State<SensorDemo> createState() => _SensorDemoState();
 }
 
-class _MyAppState extends State<MyApp> {
+class _SensorDemoState extends State<SensorDemo> {
+  late final Future<bool> _capability = DualScreenInfo.hasHingeAngleSensor;
+  late final Stream<double> _angles = DualScreenInfo.hingeAngleEvents;
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      home: TwoPane(
+  Widget build(BuildContext context) => TwoPane(
+        panePriority: MediaQuery.of(context).size.width >= 600
+            ? TwoPanePriority.both
+            : TwoPanePriority.start,
         startPane: Scaffold(
-          appBar: AppBar(
-            title: const Text('Hinge Angle Sensor'),
-          ),
+          appBar: AppBar(title: const Text('Hinge Angle Sensor')),
           body: Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: const EdgeInsets.all(16),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 FutureBuilder<bool>(
-                  future: DualScreenInfo.hasHingeAngleSensor,
-                  builder: (context, hasHingeAngleSensor) {
-                    return Text(
-                        'Hinge angle sensor exists: ${hasHingeAngleSensor.data}');
-                  },
+                  future: _capability,
+                  builder: (context, value) => Text(
+                    value.hasError
+                        ? 'Sensor error: ${value.error}'
+                        : 'Hinge angle sensor exists: ${value.data ?? "waiting"}',
+                  ),
                 ),
                 StreamBuilder<double>(
-                  stream: DualScreenInfo.hingeAngleEvents,
-                  builder: (context, hingeAngle) {
-                    return Text('Hinge angle is: ${hingeAngle.data?.toStringAsFixed(2)}');
-                  },
+                  stream: _angles,
+                  builder: (context, value) => Text(
+                    value.hasError
+                        ? 'Angle error: ${value.error}'
+                        : 'Hinge angle is: ${value.data?.toStringAsFixed(2) ?? "waiting"}',
+                  ),
                 ),
               ],
             ),
           ),
         ),
-        endPane: Material(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Center(
-              child: Text('This pane is visible on dual-screen devices.'),
+        endPane: const Material(
+          child: Center(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                'Second pane: visible on wide screens or across an active fold.',
+              ),
             ),
           ),
         ),
-        panePriority: TwoPanePriority.start,
-      ),
-    );
-  }
+      );
 }
