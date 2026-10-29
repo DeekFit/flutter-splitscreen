@@ -1,3 +1,9 @@
+## 2.0.1
+
+* Fix Android builds with Gradle 9 by replacing the removed JCenter repository
+  with Maven Central.
+* Update the Android example to use Flutter's declarative Gradle plugins.
+
 ## 2.0.0
 
 * Add iPhone Duo layout and hinge-angle support on iOS 27.1+, with an iOS 15

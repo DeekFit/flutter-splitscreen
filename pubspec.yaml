@@ -1,6 +1,6 @@
 name: split_screen
 description: Adaptive two-pane layouts and hinge-angle readings for Android foldables and iPhone Duo, with automatic division alignment and phone, tablet, desktop, and web layouts.
-version: 2.0.0
+version: 2.0.1
 homepage: https://github.com/DeekFit/flutter-splitscreen
 repository: https://github.com/DeekFit/flutter-splitscreen
 
