@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name = 'split_screen'
-  s.version = '2.0.0'
+  s.version = '2.0.1'
   s.summary = 'Hinge readings and fold-aware Flutter layouts.'
   s.description = 'Android and iOS foldable support with view-scoped Duo observation.'
   s.homepage = 'https://github.com/DeekFit/flutter-splitscreen'

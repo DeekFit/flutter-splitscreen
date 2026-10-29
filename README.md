@@ -15,7 +15,7 @@ Flutter already has support for foldable and dual-screen devices in the form of 
 
 ```yaml
 dependencies:
-  split_screen: ^2.0.0
+  split_screen: ^2.0.1
 ```
 
 Run `flutter pub get`, then import `package:split_screen/split_screen.dart`.
